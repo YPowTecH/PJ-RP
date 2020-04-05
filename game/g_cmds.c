@@ -2346,6 +2346,23 @@ void Cmd_EngageDuel_f(gentity_t *ent)
 	}
 }
 
+static void Cmd_AddBot_f(gentity_t* ent)
+{
+	trap_SendServerCommand(ent - g_entities, va("print \"%s.\n\"", G_GetStripEdString("SVINGAME", "ONLY_ADD_BOTS_AS_SERVER")));
+}
+
+static void Cmd_HeadExplodey_f(gentity_t* ent)
+{
+	Cmd_Kill_f(ent);
+	if (ent->health < 1)
+	{
+		float presaveVel = ent->client->ps.velocity[2];
+		ent->client->ps.velocity[2] = 500;
+		DismembermentTest(ent);
+		ent->client->ps.velocity[2] = presaveVel;
+	}
+}
+
 void PM_SetAnim(int setAnimParts,int anim,int setAnimFlags, int blendTime);
 
 #ifdef _DEBUG
@@ -2450,22 +2467,88 @@ void DismembermentTest(gentity_t *self);
 void DismembermentByNum(gentity_t *self, int num);
 #endif
 
+#define CMD_NOINTERMISSION	0x01
+#define CMD_CHEAT			0x02
+#define CMD_ALIVE			0x04
+
+typedef struct {
+	const char* name;				// must be lower-case for comparing
+	void		(*function)(gentity_t*);
+	int			flags;				// allow during intermission
+} clientCommand_t;
+
+static const clientCommand_t commands[] = {
+		{ "say", Cmd_Say_f, 0 },
+		//{ "say_team", Cmd_SayTeam_f, 0 },
+		{ "tell", Cmd_Tell_f, 0 },
+		{ "score", Cmd_Score_f, 0 },
+		{ "kill", Cmd_Kill_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "follow", Cmd_Follow_f, CMD_NOINTERMISSION },
+		//{ "follownext", Cmd_FollowNext_f, CMD_NOINTERMISSION },
+		//{ "followprev", Cmd_FollowPrev_f, CMD_NOINTERMISSION },
+		//{ "ready", Cmd_Ready_f, CMD_NOINTERMISSION },
+		{ "team", Cmd_Team_f, CMD_NOINTERMISSION },
+		{ "forcechanged", Cmd_ForceChanged_f, 0 },
+		{ "where", Cmd_Where_f, 0 },
+		{ "callvote", Cmd_CallVote_f, CMD_NOINTERMISSION },
+		{ "vote", Cmd_Vote_f, CMD_NOINTERMISSION },
+		{ "callteamvote", Cmd_CallTeamVote_f, CMD_NOINTERMISSION },
+		{ "teamvote", Cmd_TeamVote_f, CMD_NOINTERMISSION },
+		//{ "ragequit", Cmd_RageQuit_f, 0 },
+		{ "gc", Cmd_GameCommand_f, CMD_NOINTERMISSION },
+		//{ "timeout", Cmd_Timeout_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		//{ "timein", Cmd_Timein_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		//{ "referee", Cmd_Referee_f, 0 },
+		{ "give", Cmd_Give_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "god", Cmd_God_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "notarget", Cmd_Notarget_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "noclip", Cmd_Noclip_f, CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "setviewpos", Cmd_SetViewpos_f, CMD_CHEAT | CMD_NOINTERMISSION },
+		{ "teamtask", Cmd_TeamTask_f, CMD_CHEAT | CMD_NOINTERMISSION },
+		{ "levelshot", Cmd_LevelShot_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
+		//{ "thedestroyer", Cmd_TheDestroyer_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
+		{ "addbot", Cmd_AddBot_f, 0 },
+		//By PowTecH - Account: login commands
+		{ "amregister", Cmd_Register_f, CMD_NOINTERMISSION },
+		{ "amlogin", Cmd_Login_f, CMD_NOINTERMISSION },
+		{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION },
+		//By PowTecH - RPG: Houses commands
+		//{ "pjhouses", Cmd_HouseList_f, CMD_NOINTERMISSION },
+		//{ "pjbuyhouse", Cmd_HouseBuy_f, CMD_NOINTERMISSION },
+		//{ "pjsellhouse", Cmd_HouseSell_f, CMD_NOINTERMISSION },
+		//By PowTecH - Worlds: commands
+		//{ "amworld", Cmd_World_f, CMD_NOINTERMISSION },
+		//{ "gas", Cmd_Gas_f, CMD_NOINTERMISSION },
+		/*#ifdef _DEBUG
+			{ "headexplodey", Cmd_HeadExplodey_f, CMD_CHEAT },
+			{ "g2animent", G_CreateExampleAnimEnt, CMD_CHEAT },
+			{ "loveandpeace", Cmd_LoveAndPeace_f, CMD_CHEAT },
+			{ "debugplum", Cmd_DebugPlum_f, CMD_CHEAT },
+			{ "debugsetsabermove", Cmd_DebugSetSaberMove_f, CMD_CHEAT },
+			{ "debugsetbodyanim", Cmd_DebugSetBodyAnim_f, CMD_CHEAT },
+			{ "debugdismemberment", Cmd_DebugDismemberment_f, CMD_CHEAT },
+			{ "debugknockmedown", Cmd_DebugKnockMeDown_f, CMD_CHEAT },
+		#endif*/
+};
+
 /*
 =================
 ClientCommand
 =================
 */
 void ClientCommand( int clientNum ) {
+	const clientCommand_t* command = NULL;
 	gentity_t *ent;
 	char	cmd[MAX_TOKEN_CHARS];
+	unsigned				i;
 
 	ent = g_entities + clientNum;
 	if ( !ent->client || ent->client->pers.connected < CON_CONNECTED ) {
 		return;		// not fully in game yet
 	}
 
-
 	trap_Argv( 0, cmd, sizeof( cmd ) );
+	Q_strlwr(cmd);
 	
 	// Filter "\n" and "\r"
 	if( strchr(ConcatArgs(0), '\n') != NULL || strchr(ConcatArgs(0), '\r') != NULL )
@@ -2482,6 +2565,42 @@ void ClientCommand( int clientNum ) {
 	}
 	//end rww
 
+	for (i = 0; i < ARRAY_LEN(commands); i++) {
+		if (!strcmp(cmd, commands[i].name)) {
+			command = &commands[i];
+			break;
+		}
+	}
+
+	if (command == NULL) {
+		trap_SendServerCommand(clientNum, va("print \"unknown cmd %s\n\"", cmd));
+		return;
+	}
+
+	if (command->flags & CMD_CHEAT) {
+		if (!g_cheats.integer) {
+			trap_SendServerCommand(ent - g_entities, va("print \"%s\n\"", G_GetStripEdString("SVINGAME", "NOCHEATS")));
+			return;
+		}
+	}
+
+	if (command->flags & CMD_NOINTERMISSION) {
+		if (level.intermissiontime || level.intermissionQueued) {
+			trap_SendServerCommand(clientNum, va("print \"You cannot perform this task (%s) during the intermission.\n\"", cmd));
+			return;
+		}
+	}
+
+	if (command->flags & CMD_ALIVE) {
+		if (ent->health <= 0 || ent->client->sess.spectatorState != SPECTATOR_NOT) {
+			trap_SendServerCommand(ent - g_entities, va("print \"%s\n\"", G_GetStripEdString("SVINGAME", "MUSTBEALIVE")));
+			return;
+		}
+	}
+
+	command->function(ent);
+
+	/*
 	if (Q_stricmp (cmd, "say") == 0) {
 		Cmd_Say_f (ent, SAY_ALL, qfalse);
 		return;
@@ -2493,7 +2612,7 @@ void ClientCommand( int clientNum ) {
 	if (Q_stricmp (cmd, "tell") == 0) {
 		Cmd_Tell_f ( ent );
 		return;
-	}
+	}*/
 	/*
 	if (Q_stricmp (cmd, "vsay") == 0) {
 		Cmd_Voice_f (ent, SAY_ALL, qfalse, qfalse);
@@ -2524,6 +2643,7 @@ void ClientCommand( int clientNum ) {
 		return;
 	}
 	*/
+	/*
 	if (Q_stricmp (cmd, "score") == 0) {
 		Cmd_Score_f (ent);
 		return;
@@ -2669,6 +2789,7 @@ void ClientCommand( int clientNum ) {
 		Cmd_SetViewpos_f( ent );
 	else if (Q_stricmp (cmd, "stats") == 0)
 		Cmd_Stats_f( ent );
+	*/
 	/*
 	else if (Q_stricmp(cmd, "#mm") == 0 && CheatsOk( ent ))
 	{
@@ -2677,6 +2798,7 @@ void ClientCommand( int clientNum ) {
 	*/
 	//I broke the ATST when I restructured it to use a single global anim set for all client animation.
 	//You can fix it, but you'll have to implement unique animations (per character) again.
+/*
 #ifdef _DEBUG //sigh..
 	else if (Q_stricmp(cmd, "headexplodey") == 0 && CheatsOk( ent ))
 	{
@@ -2833,5 +2955,5 @@ void ClientCommand( int clientNum ) {
 		{
 			trap_SendServerCommand( clientNum, va("print \"unknown cmd %s\n\"", cmd ) );
 		}
-	}
+	}*/
 }
