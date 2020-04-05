@@ -9,7 +9,7 @@
 //==================================================================
 
 // the "gameversion" client command will print this plus compile date
-#define	GAMEVERSION	"PJ-Mod"
+#define	GAMEVERSION	"^2P^6J^7-Mod"
 
 #define BODY_QUEUE_SIZE		8
 
