@@ -309,6 +309,25 @@ typedef struct {
 	qboolean	setForce;			// set to true once player is given the chance to set force powers
 	int			updateUITime;		// only update userinfo for FP/SL if < level.time
 	qboolean	teamLeader;			// true when this client is a team leader
+
+	//PowTecH - Account:
+	int			id;
+	char		password[MAX_NETNAME];
+	int			powerLevel;
+	char		powerBit[MAX_TOKEN_CHARS];
+	char		userlogged[MAX_NETNAME];
+	char		displayName[MAX_NETNAME];
+	int			thisconnectuc;
+	int			logintrys;
+
+	//PowTecH - General Stats:
+	int			gsKills;
+	int			gsDeaths;
+	int			gsTime;
+
+	//PowTecH - RP:
+	int			rpMoney;
+
 } clientSession_t;
 
 // JK2MV
@@ -317,8 +336,6 @@ typedef struct {
 	qboolean	localClient;
 } mvclientSession_t;
 
-//
-#define MAX_NETNAME			36
 #define	MAX_VOTE_COUNT		3
 
 // client data that stays across multiple respawns, but is cleared
@@ -522,6 +539,10 @@ typedef struct {
 
 	// MVSDK
 	qboolean	bboxEncoding;
+
+	//PowTecH - Account: 
+	int			dbUserCount;
+
 } level_locals_t;
 
 
@@ -828,6 +849,10 @@ void mysrand( unsigned seed );
 int myrand( void );
 
 void MV_BBoxToTime2( gentity_t *ent );
+
+//PowTecH - Twimod: Splitstring
+char* Twimod_Splitstring(char* stringNew, char split);
+char* strrep(char* str, char find, char replace);
 
 //
 // g_client.c

@@ -1118,25 +1118,22 @@ void G_Say( gentity_t *ent, gentity_t *target, int mode, const char *chatText ) 
 /*
 ==================
 Cmd_Say_f
+PowTecH - SaberMod: edit
 ==================
 */
-static void Cmd_Say_f( gentity_t *ent, int mode, qboolean arg0 ) {
-	char		*p;
+static void Cmd_Say_f( gentity_t *ent) {
+	const char		*p;
+	int				mode;
 
-	if ( trap_Argc () < 2 && !arg0 ) {
+	if ( trap_Argc () < 2 ) {
 		return;
 	}
 
-	if (arg0)
-	{
-		p = ConcatArgs( 0 );
-	}
-	else
-	{
-		p = ConcatArgs( 1 );
-	}
+	p = ConcatArgs(1);
 
-	G_Say( ent, NULL, mode, p );
+	mode = SAY_ALL;
+
+	G_Say(ent, NULL, mode, p);
 }
 
 /*
@@ -2466,70 +2463,375 @@ void DismembermentTest(gentity_t *self);
 #ifdef _DEBUG
 void DismembermentByNum(gentity_t *self, int num);
 #endif
+/*
+=================
+Custom Helper Functions
+By PowTecH
+=================
+*/
 
+//By PowTecH - consistance in writes to user files
+
+void help_write_f(gentity_t* ent, char* userfile) {
+	char userwrite[MAX_TOKEN_CHARS];
+	fileHandle_t	f;
+
+	trap_FS_FOpenFile(userfile, &f, FS_WRITE);
+	Com_sprintf(userwrite, sizeof(userwrite), "%s %s %s %i %i %i %i ",
+		ent->client->sess.userlogged, 
+		ent->client->sess.password, 
+		ent->client->sess.displayName, 
+		ent->client->sess.rpMoney,
+		//ent->client->sess.sDuelW, 
+		//ent->client->sess.sDuelL, 
+		ent->client->sess.gsKills,
+		ent->client->sess.gsDeaths, 
+		ent->client->sess.gsTime
+		//ent->client->sess.powerLevel, 
+		//ent->client->sess.powerBit, 
+		//ent->client->sess.emoteBit
+	);
+	trap_FS_Write(userwrite, strlen(userwrite), f);
+	trap_FS_FCloseFile(f);
+}
+
+void help_writeSys_f(gentity_t* ent, char* userfile) {
+	char userwrite[MAX_TOKEN_CHARS];
+	fileHandle_t	f;
+
+	trap_FS_FOpenFile(userfile, &f, FS_WRITE);
+	Com_sprintf(userwrite, sizeof(userwrite), "%i ",
+		level.dbUserCount);
+	trap_FS_Write(userwrite, strlen(userwrite), f);
+	trap_FS_FCloseFile(f);
+}
+
+/*
+=================
+*/
+
+
+/*
+=================
+Custom Commands
+By PowTecH
+=================
+*/
+
+/*
+=================
+Register Account
+from ouned's Twimod
+by PowTecH
+=================
+*/
+void Cmd_Register_f(gentity_t* ent) {
+	int i, len;
+	char username[MAX_NETNAME], password1[80], password2[80];
+	char userfile[MAX_TOKEN_CHARS];
+	char sysfile[MAX_TOKEN_CHARS];
+	char userwrite[MAX_TOKEN_CHARS];
+	char buffer[MAX_TOKEN_CHARS] = "";
+
+	fileHandle_t	f;
+	trap_Argv(1, username, sizeof(username));
+	trap_Argv(2, password1, sizeof(password1));
+	trap_Argv(3, password2, sizeof(password2));
+
+	// Check we got a username and two passwords
+	if (!(strlen(username) && strlen(password1) && strlen(password2))) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1/^7amregister ^1<^7username^1> <^7password^1> <^7password^1>^7\n\""));
+		return;
+	}
+
+	// Check the user didnt creat another acc this connection
+	if (ent->client->sess.thisconnectuc == 1) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are not allowed to creat more than one user per connection^1]^7\n\""));
+		return;
+	}
+
+	// Should never happen actually...
+	if (strchr(username, ' ') || strchr(password1, ' ') || strchr(password2, ' ')) {
+		// User is not allowed to have spaces in his name or in his password...
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You may not have spaces in your usernme or password^1]^7\n\""));
+		return;
+	}
+
+	// Check that the passwords match.
+	if (Q_stricmp(password1, password2) != 0) {
+		// The passwords didn't match, so we inform the suer.
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Passwords didn't match^1]^7\n\""));
+		return;
+	}
+
+	//Have to check each user
+	for (i = 1; i <= level.dbUserCount; i++) {
+		Com_sprintf(userfile, sizeof(userfile), "users/%i.cfg", i);
+		trap_FS_FOpenFile(userfile, &f, FS_READ);
+		//found a player with this id
+		if (f) {
+			trap_FS_FCloseFile(f);
+			len = trap_FS_FOpenFile(userfile, &f, FS_READ);
+			trap_FS_Read(buffer, len, f);
+
+			//check the username of that id'd player
+			if (Q_stricmp(Twimod_Splitstring(buffer, ' '), username) == 0) {
+				// We found this username, so we inform the user.
+				trap_SendServerCommand(ent - g_entities, va("print \"^1[^7User '^1%s^7' already exists^1]^7\n\"", username));
+				trap_FS_FCloseFile(f);
+				return;
+			}
+		}
+	}
+
+	//Update our database size tracker
+	level.dbUserCount++;
+	Com_sprintf(sysfile, sizeof(sysfile), "sys/sys.cfg");
+	trap_FS_FOpenFile(sysfile, &f, FS_READ);
+	//System file is still there
+	if (f) {
+		trap_FS_FCloseFile(f);
+		help_writeSys_f(ent, sysfile);
+	}
+	else {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Accounts not setup on this server^1]^7\n\""));
+		return;
+	}
+
+	//create a new user incrimented by one
+	Com_sprintf(userfile, sizeof(userfile), "users/%i.cfg", level.dbUserCount);
+	trap_FS_FOpenFile(userfile, &f, FS_APPEND);
+	Com_sprintf(userwrite, sizeof(userwrite), "%s %s %s 500 0 0 0 0 0 0 0 0 ", username, password1, ent->client->pers.netname);
+	trap_FS_Write(userwrite, strlen(userwrite), f);
+	trap_FS_FCloseFile(f);
+	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7User '^2%s^7' with the password '^2%s^7' successfully created^2]^7\n\"", username, password1));
+	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7You are now logged in as '^2%s^7' with level '^2%i^7' admin^2]^7\n\"", username, ent->client->sess.powerLevel));
+
+	//give the user all the properties that we saved to his profile
+	ent->client->sess.id = level.dbUserCount;
+	strcpy(ent->client->sess.password, password1);
+	strcpy(ent->client->sess.userlogged, username);
+	strcpy(ent->client->sess.displayName, ent->client->pers.netname);
+	ent->client->sess.thisconnectuc = 1;
+	ent->client->sess.logintrys = 0;
+}
+
+/*
+=================
+Login Account
+from ouned's Twimod
+by PowTecH
+=================
+*/
+void Cmd_Login_f(gentity_t* ent) {
+	int i;
+	char username[MAX_NETNAME] = "";
+	char pass[MAX_NETNAME] = "";
+	char buffer[MAX_TOKEN_CHARS] = "";
+	char userfile[MAX_TOKEN_CHARS] = "";
+	qboolean found = qfalse;
+	int len;
+	fileHandle_t	f;
+
+	trap_Argv(1, username, sizeof(username));
+	trap_Argv(2, pass, sizeof(pass));
+
+	// Dont bother looking for something that doesnt exist
+	if (level.dbUserCount <= 0) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7No users registered^1]^7\n\""));
+		return;
+	}
+
+	// Protect from brutforcing
+	ent->client->sess.logintrys++;
+
+	// Check we got a username and a password
+	if (!(strlen(username) && strlen(pass))) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1/^7amlogin ^1<^7username^1> <^7password^1>^7\n\""));
+		return;
+	}
+
+	if (Q_stricmp(ent->client->sess.userlogged, "") != 0) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are already logged in^1]^7\n\""));
+		return;
+	}
+
+	// Check the user don't try to much :P
+	if (ent->client->sess.logintrys >= 5) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You try to much. Command ignored^1]^7\n\""));
+		return;
+	}
+
+	// Should never happen actually...
+	if (strchr(username, ' ') || strchr(pass, ' ')) {
+		// User is not allowed to have spaces in his name or in his password...
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Usernames and passwords does not include spaces^1]^7\n\""));
+		return;
+	}
+
+	//Have to check each user
+	for (i = 1; i <= level.dbUserCount; i++) {
+		Com_sprintf(userfile, sizeof(userfile), "users/%i.cfg", i);
+		trap_FS_FOpenFile(userfile, &f, FS_READ);
+		//found a player with this id
+		if (f) {
+			trap_FS_FCloseFile(f);
+			len = trap_FS_FOpenFile(userfile, &f, FS_READ);
+			trap_FS_Read(buffer, len, f);
+
+			//check the username of that id'd player
+			if (Q_stricmp(Twimod_Splitstring(buffer, ' '), username) == 0) {
+				if (Q_stricmp(Twimod_Splitstring(NULL, ' '), pass) == 0) {
+					//we are done searching
+					trap_FS_FCloseFile(f);
+					found = qtrue;
+					break;
+				}
+				else {
+					//we are done searching
+					trap_FS_FCloseFile(f);
+					break;
+				}
+			}
+		}
+	}
+
+	//incorrect information
+	if (!found) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Incorrect username or password^1]^7\n\""));
+		return;
+	}
+
+	//use the id
+	Com_sprintf(userfile, sizeof(userfile), "users/%i.cfg", i);
+	len = trap_FS_FOpenFile(userfile, &f, FS_READ);
+	trap_FS_Read(buffer, len, f);
+
+	ent->client->sess.id = i;
+	strcpy(ent->client->sess.userlogged, username);
+	strcpy(ent->client->sess.password, pass);
+	strcpy(ent->client->sess.displayName, Twimod_Splitstring(NULL, ' '));
+	ent->client->sess.rpMoney = atoi(Twimod_Splitstring(NULL, ' '));
+	//ent->client->sess.sDuelW = atoi(Twimod_Splitstring(NULL, ' '));
+	//ent->client->sess.sDuelL = atoi(Twimod_Splitstring(NULL, ' '));
+	ent->client->sess.gsKills = atoi(Twimod_Splitstring(NULL, ' '));
+	ent->client->sess.gsDeaths = atoi(Twimod_Splitstring(NULL, ' '));
+	ent->client->sess.gsTime = atoi(Twimod_Splitstring(NULL, ' '));
+	//ent->client->sess.powerLevel = atoi(Twimod_Splitstring(NULL, ' '));
+	//strcpy(ent->client->sess.powerBit, Twimod_Splitstring(NULL, ' '));
+	//strcpy(ent->client->sess.emoteBit, Twimod_Splitstring(NULL, ' '));
+	ent->client->sess.logintrys = 0;
+	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7You are now logged in as '^2%s^7' with level '^2%i^7' admin^2]^7\n\"", username, ent->client->sess.powerLevel));
+
+	trap_FS_FCloseFile(f);
+}
+
+/*
+=================
+Logout Account
+from ouned's Twimod
+by PowTecH
+=================
+*/
+void Cmd_Logout_f(gentity_t* ent) {
+	int i, len;
+	char userfile[MAX_TOKEN_CHARS];
+	char userwrite[MAX_TOKEN_CHARS];
+	char buffer[MAX_TOKEN_CHARS];
+	qboolean found = qfalse;
+
+	fileHandle_t	f;
+	if ((Q_stricmp(ent->client->sess.userlogged, "") == 0)) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are not logged in^1]^7\n\""));
+		return;
+	}
+
+	//Have to check each user
+	for (i = 1; i <= level.dbUserCount; i++) {
+		Com_sprintf(userfile, sizeof(userfile), "users/%i.cfg", i);
+		trap_FS_FOpenFile(userfile, &f, FS_READ);
+		//found a player with this id
+		if (f) {
+			trap_FS_FCloseFile(f);
+			len = trap_FS_FOpenFile(userfile, &f, FS_READ);
+			trap_FS_Read(buffer, len, f);
+
+			//check the username of that id'd player
+			if (Q_stricmp(Twimod_Splitstring(buffer, ' '), ent->client->sess.userlogged) == 0) {
+				if (Q_stricmp(Twimod_Splitstring(NULL, ' '), ent->client->sess.password) == 0) {
+					found = qtrue;
+					trap_FS_FCloseFile(f);
+					break;
+				}
+			}
+		}
+	}
+
+	if (!found) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Your account was deleted or modified^1]^7\n\""));
+		return;
+	}
+
+	help_write_f(ent, userfile);
+
+	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Your information was saved^5]^7\n\""));
+	ent->client->sess.id = 0;
+	Q_strncpyz(ent->client->sess.password, "", sizeof(ent->client->sess.password));
+	//ent->client->sess.powerLevel = 0;
+	//Q_strncpyz(ent->client->sess.powerBit, "", sizeof(ent->client->sess.powerBit));
+	Q_strncpyz(ent->client->sess.userlogged, "", sizeof(ent->client->sess.userlogged));
+	Q_strncpyz(ent->client->sess.displayName, "", sizeof(ent->client->sess.displayName));
+	//Q_strncpyz(ent->client->sess.emoteBit, "", sizeof(ent->client->sess.emoteBit));
+	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7You are now logged out^2]^7\n\""));
+}
+
+
+/*
+=================
+*/
+
+
+//PowTecH - SaberMod: new cmd structure
 #define CMD_NOINTERMISSION	0x01
 #define CMD_CHEAT			0x02
 #define CMD_ALIVE			0x04
 
+
 typedef struct {
 	const char* name;				// must be lower-case for comparing
-	void		(*function)(gentity_t*);
+	void		(*function)(gentity_t *);
 	int			flags;				// allow during intermission
 } clientCommand_t;
 
 static const clientCommand_t commands[] = {
-		{ "say", Cmd_Say_f, 0 },
-		//{ "say_team", Cmd_SayTeam_f, 0 },
-		{ "tell", Cmd_Tell_f, 0 },
-		{ "score", Cmd_Score_f, 0 },
-		{ "kill", Cmd_Kill_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "follow", Cmd_Follow_f, CMD_NOINTERMISSION },
-		//{ "follownext", Cmd_FollowNext_f, CMD_NOINTERMISSION },
-		//{ "followprev", Cmd_FollowPrev_f, CMD_NOINTERMISSION },
-		//{ "ready", Cmd_Ready_f, CMD_NOINTERMISSION },
-		{ "team", Cmd_Team_f, CMD_NOINTERMISSION },
-		{ "forcechanged", Cmd_ForceChanged_f, 0 },
-		{ "where", Cmd_Where_f, 0 },
-		{ "callvote", Cmd_CallVote_f, CMD_NOINTERMISSION },
-		{ "vote", Cmd_Vote_f, CMD_NOINTERMISSION },
-		{ "callteamvote", Cmd_CallTeamVote_f, CMD_NOINTERMISSION },
-		{ "teamvote", Cmd_TeamVote_f, CMD_NOINTERMISSION },
-		//{ "ragequit", Cmd_RageQuit_f, 0 },
-		{ "gc", Cmd_GameCommand_f, CMD_NOINTERMISSION },
-		//{ "timeout", Cmd_Timeout_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		//{ "timein", Cmd_Timein_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		//{ "referee", Cmd_Referee_f, 0 },
-		{ "give", Cmd_Give_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "god", Cmd_God_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "notarget", Cmd_Notarget_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "noclip", Cmd_Noclip_f, CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "setviewpos", Cmd_SetViewpos_f, CMD_CHEAT | CMD_NOINTERMISSION },
-		{ "teamtask", Cmd_TeamTask_f, CMD_CHEAT | CMD_NOINTERMISSION },
-		{ "levelshot", Cmd_LevelShot_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
-		//{ "thedestroyer", Cmd_TheDestroyer_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
-		{ "addbot", Cmd_AddBot_f, 0 },
-		//By PowTecH - Account: login commands
-		{ "amregister", Cmd_Register_f, CMD_NOINTERMISSION },
-		{ "amlogin", Cmd_Login_f, CMD_NOINTERMISSION },
-		{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION },
-		//By PowTecH - RPG: Houses commands
-		//{ "pjhouses", Cmd_HouseList_f, CMD_NOINTERMISSION },
-		//{ "pjbuyhouse", Cmd_HouseBuy_f, CMD_NOINTERMISSION },
-		//{ "pjsellhouse", Cmd_HouseSell_f, CMD_NOINTERMISSION },
-		//By PowTecH - Worlds: commands
-		//{ "amworld", Cmd_World_f, CMD_NOINTERMISSION },
-		//{ "gas", Cmd_Gas_f, CMD_NOINTERMISSION },
-		/*#ifdef _DEBUG
-			{ "headexplodey", Cmd_HeadExplodey_f, CMD_CHEAT },
-			{ "g2animent", G_CreateExampleAnimEnt, CMD_CHEAT },
-			{ "loveandpeace", Cmd_LoveAndPeace_f, CMD_CHEAT },
-			{ "debugplum", Cmd_DebugPlum_f, CMD_CHEAT },
-			{ "debugsetsabermove", Cmd_DebugSetSaberMove_f, CMD_CHEAT },
-			{ "debugsetbodyanim", Cmd_DebugSetBodyAnim_f, CMD_CHEAT },
-			{ "debugdismemberment", Cmd_DebugDismemberment_f, CMD_CHEAT },
-			{ "debugknockmedown", Cmd_DebugKnockMeDown_f, CMD_CHEAT },
-		#endif*/
+	{ "say", Cmd_Say_f, 0 },
+	//{ "say_team", Cmd_SayTeam_f, 0 },
+	{ "tell", Cmd_Tell_f, 0 },
+	{ "score", Cmd_Score_f, 0 },
+	{ "kill", Cmd_Kill_f, CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "follow", Cmd_Follow_f, CMD_NOINTERMISSION },
+	{ "team", Cmd_Team_f, CMD_NOINTERMISSION },
+	{ "forcechanged", Cmd_ForceChanged_f, 0 },
+	{ "where", Cmd_Where_f, 0 },
+	{ "callvote", Cmd_CallVote_f, CMD_NOINTERMISSION },
+	{ "vote", Cmd_Vote_f, CMD_NOINTERMISSION },
+	{ "callteamvote", Cmd_CallTeamVote_f, CMD_NOINTERMISSION },
+	{ "teamvote", Cmd_TeamVote_f, CMD_NOINTERMISSION },
+	{ "gc", Cmd_GameCommand_f, CMD_NOINTERMISSION },
+	{ "give", Cmd_Give_f, CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "god", Cmd_God_f, CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "notarget", Cmd_Notarget_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "noclip", Cmd_Noclip_f, CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "setviewpos", Cmd_SetViewpos_f, CMD_CHEAT | CMD_NOINTERMISSION },
+	{ "teamtask", Cmd_TeamTask_f, CMD_CHEAT | CMD_NOINTERMISSION },
+	{ "levelshot", Cmd_LevelShot_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
+	{ "addbot", Cmd_AddBot_f, 0 },
+	//By PowTecH - Account: login commands
+	{ "amregister", Cmd_Register_f, CMD_NOINTERMISSION },
+	{ "amlogin", Cmd_Login_f, CMD_NOINTERMISSION },
+	{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION }
 };
+//PowTecH - End
 
 /*
 =================
@@ -2537,9 +2839,9 @@ ClientCommand
 =================
 */
 void ClientCommand( int clientNum ) {
-	const clientCommand_t* command = NULL;
-	gentity_t *ent;
-	char	cmd[MAX_TOKEN_CHARS];
+	const clientCommand_t*	command = NULL;
+	gentity_t*				ent;
+	char					cmd[MAX_TOKEN_CHARS];
 	unsigned				i;
 
 	ent = g_entities + clientNum;
@@ -2565,6 +2867,7 @@ void ClientCommand( int clientNum ) {
 	}
 	//end rww
 
+	//PowTecH - SaberMod: new cmd structure
 	for (i = 0; i < ARRAY_LEN(commands); i++) {
 		if (!strcmp(cmd, commands[i].name)) {
 			command = &commands[i];
@@ -2599,6 +2902,7 @@ void ClientCommand( int clientNum ) {
 	}
 
 	command->function(ent);
+	//PowTecH - end
 
 	/*
 	if (Q_stricmp (cmd, "say") == 0) {
