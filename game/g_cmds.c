@@ -2506,6 +2506,30 @@ void help_writeSys_f(gentity_t* ent, char* userfile) {
 	trap_FS_FCloseFile(f);
 }
 
+int help_readSys_f(gentity_t* ent) {
+	char sysfile[MAX_TOKEN_CHARS];
+	int len;
+	char buffer[MAX_TOKEN_CHARS] = "";
+	fileHandle_t	f;
+
+	Com_sprintf(sysfile, sizeof(sysfile), "sys/sys.cfg");
+
+	trap_FS_FOpenFile(sysfile, &f, FS_READ);
+
+	//System file is still there
+	if (f) {
+		trap_FS_FCloseFile(f);
+		len = trap_FS_FOpenFile(sysfile, &f, FS_READ);
+		trap_FS_Read(buffer, len, f);
+
+		return atoi(buffer);
+	}
+	else {
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Accounts not setup on this server", 1));
+		return -1;
+	}
+}
+
 /*
 =================
 */
@@ -2546,7 +2570,7 @@ void Cmd_Register_f(gentity_t* ent) {
 
 	// Check the user didnt creat another acc this connection
 	if (ent->client->sess.thisconnectuc == 1) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are not allowed to creat more than one user per connection^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("You are not allowed to creat more than one user per connection", 1));
 		return;
 	}
 
@@ -2560,7 +2584,7 @@ void Cmd_Register_f(gentity_t* ent) {
 	// Check that the passwords match.
 	if (Q_stricmp(password1, password2) != 0) {
 		// The passwords didn't match, so we inform the suer.
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Passwords didn't match^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Passwords didn't match", 1));
 		return;
 	}
 
@@ -2635,6 +2659,13 @@ void Cmd_Login_f(gentity_t* ent) {
 
 	trap_Argv(1, username, sizeof(username));
 	trap_Argv(2, pass, sizeof(pass));
+
+	if (level.dbUserCount == -1) {
+		level.dbUserCount = help_readSys_f(ent);
+		if (level.dbUserCount == -1) {
+			return;
+		}
+	}
 
 	// Dont bother looking for something that doesnt exist
 	if (level.dbUserCount <= 0) {

@@ -2105,6 +2105,8 @@ float flrand(float min, float max);
 int irand(int min, int max);
 int Q_irand(int value1, int value2);
 
+char* Pow_Output(char* str, int color);
+
 /*
 Ghoul2 Insert Start
 */

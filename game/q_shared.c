@@ -1418,4 +1418,10 @@ int Q_irand(int value1, int value2)
 
 //====================================================================
 
+char* Pow_Output(char* str, int color) {
+	if (color > 6 || color < 0) {
+		color = 7;
+	}
+	return va("print \"^%d[^7%s^%d]^7\n\"", color, str, color);
+}
 

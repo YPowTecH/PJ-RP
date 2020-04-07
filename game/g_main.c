@@ -934,6 +934,11 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	{
 		G_LogPrintf("Duel Tournament Begun: kill limit %d, win limit: %d\n", g_fraglimit.integer, g_duel_fraglimit.integer );
 	}
+
+	//PowTecH - General - Init'ing some basic server settings if nessassary
+	G_Printf("^2[^7Init Server Settings^2]^7\n");
+	G_Printf("^2-----------------------------------\n");
+	level.dbUserCount = -1;
 }
 
 
