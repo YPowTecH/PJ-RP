@@ -745,6 +745,9 @@ void WP_FireBlasterMissile( gentity_t *ent, vec3_t start, vec3_t dir, qboolean a
 void G_RunMover( gentity_t *ent );
 void Touch_DoorTrigger( gentity_t *ent, gentity_t *other, trace_t *trace );
 
+//PowTecH - RP: resource spawn
+void Trigger_Pow_Resource(gentity_t* ent);
+
 //
 // g_trigger.c
 //
@@ -758,6 +761,9 @@ void TeleportPlayer( gentity_t *player, vec3_t origin, vec3_t angles );
 void ATST_ManageDamageBoxes(gentity_t *ent);
 int G_PlayerBecomeATST(gentity_t *ent);
 void G_CreateExampleAnimEnt(gentity_t *ent);
+
+//PowTecH - RP: resource spawn
+void SP_Pow_Resource(gentity_t* ent);
 
 
 //

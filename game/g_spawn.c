@@ -197,6 +197,9 @@ void SP_item_botroam( gentity_t *ent )
 
 void SP_emplaced_gun( gentity_t *ent );
 
+//PowTecH - RP: resource spawn
+void SP_Pow_Resource(gentity_t* ent);
+
 spawn_t	spawns[] = {
 	// info entities don't do anything at all, but provide positional
 	// information for things controlled by other processes
@@ -287,6 +290,9 @@ spawn_t	spawns[] = {
 	{"item_botroam", SP_item_botroam},
 
 	{"emplaced_gun", SP_emplaced_gun},
+
+	//PowTecH - RP: resource spawn
+	{"pow_resource", SP_Pow_Resource},
 
 	{0, 0}
 };
