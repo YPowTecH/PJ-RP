@@ -199,6 +199,7 @@ void SP_emplaced_gun( gentity_t *ent );
 
 //PowTecH - RP: resource spawn
 void SP_Pow_Resource(gentity_t* ent);
+void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent);
 
 spawn_t	spawns[] = {
 	// info entities don't do anything at all, but provide positional
@@ -293,6 +294,7 @@ spawn_t	spawns[] = {
 
 	//PowTecH - RP: resource spawn
 	{"pow_resource", SP_Pow_Resource},
+	{"trigger_pow_resource_spawn_area", SP_Trigger_Pow_Resource_Spawn_Area},
 
 	{0, 0}
 };

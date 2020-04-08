@@ -585,5 +585,192 @@ void SP_func_timer( gentity_t *self ) {
 
 	self->r.svFlags = SVF_NOCLIENT;
 }
+void aboutnothing(gentity_t* ent) {
+	G_Printf("^1nothing\n");
+}
+
+void helperfunctionforit(gentity_t* ent) {
+	gentity_t* newEnt;
+	vec3_t dest;
+	trace_t tr;
+	vec3_t mins, maxs;
+	int minsResource[3] = { -2, -2, -2 };
+	int maxsResource[3] = { 2, 2, 2 };
+
+	//RNG garbage...
+	int rng = 0;
+	int wtf = 0;
+	float i, j, rngx, rngy;
+	int k;
+
+	// find the bounds of the trigger
+	VectorCopy(ent->r.absmin, mins);
+	VectorCopy(ent->r.absmax, maxs);
+
+	//Generate random spawn location in the area
+	i = (int)(crandom() * 1000);
+	j = (int)(crandom() * 1000);
+	k = irand(0, j);
+	wtf = level.time + i * k;
+	Rand_Init(wtf);
+	rngx = irand(ent->r.absmin[0], ent->r.absmax[0]);
+	rngy = irand(ent->r.absmin[1], ent->r.absmax[1]);
+
+	//Spawn the resource
+	newEnt = G_Spawn();
+	newEnt->s.modelindex = G_ModelIndex("models/map_objects/cinematics/chair.md3");
+	//newEnt->s.modelindex = G_ModelIndex(ent->model);
+	//newEnt->parent = ent;
+
+	newEnt->s.eFlags = 0;
+	newEnt->r.svFlags |= SVF_PLAYER_USABLE;
+	newEnt->r.contents = CONTENTS_SOLID;
+	newEnt->clipmask = MASK_SOLID;
+
+	//set up its dimentions
+	VectorSet(newEnt->s.origin, rngx, rngy, ent->s.origin[2]);
+	VectorSet(newEnt->r.mins, minsResource[0], minsResource[1], minsResource[2]);
+	VectorSet(newEnt->r.maxs, maxsResource[0], maxsResource[1], maxsResource[2]);
+
+	G_Printf("^2Has been hit %.2f %.2f %.2f\n", newEnt->s.origin[0], newEnt->s.origin[1], newEnt->s.origin[2]);
+	VectorSet(dest, newEnt->s.origin[0], newEnt->s.origin[1], newEnt->s.origin[2] - 4096);
+	G_Printf("^3Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
+	trap_Trace(&tr, newEnt->s.origin, newEnt->r.mins, newEnt->r.maxs, dest, newEnt->s.number, MASK_SOLID);
+	G_Printf("^4Has been hit %d\n", newEnt->s.number);
+	if (tr.startsolid)
+	{
+		G_Printf("^6SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(ent->s.origin));
+		G_FreeEntity(ent);
+		return;
+	}
+
+	newEnt->think = aboutnothing;
+	newEnt->nextthink = level.time + FRAMETIME;
+
+	G_SetOrigin(newEnt, newEnt->s.origin);
+	VectorCopy(newEnt->s.angles, newEnt->s.apos.trBase);
+	//G_SetAngles(newEnt, newEnt->s.angles);
+
+
+	trap_LinkEntity(newEnt);
+
+	G_SoundIndex("sound/movers/objects/useshieldstation.wav");
+
+	newEnt->s.modelindex2 = G_ModelIndex("/models/items/psd_big.md3");	// Precache model
+}
+
+void Pow_Resource_Areaz(gentity_t* self, gentity_t* activator) {
+	if (!activator->client)
+	{
+		return;
+	}
+
+	if (!(activator->client->pers.cmd.buttons & BUTTON_USE))
+	{
+		return;
+	}
+
+	if (level.time < self->wait) {
+		return;
+	}
+
+	self->wait = level.time + 5 * 1000;
+	self->think = helperfunctionforit;
+	self->nextthink = self->wait;
+
+	G_Printf("^2Has been hit\n");
+}
+
+void Touch_Pow_Resource_Area(gentity_t* self, gentity_t* other, trace_t* trace) {
+	if (!other->client) {
+		return;
+	}
+	Pow_Resource_Areaz(self, other);
+}
+
+/*
+void SP_Pow_Resource_t(gentity_t* ent) {
+	int mins[3] = { -2, -2, -2 };
+	int maxs[3] = { 2, 2, 2 };
+
+	vec3_t dest;
+	trace_t tr;
+
+	ent->s.modelindex = G_ModelIndex(ent->model);
+
+	VectorSet(ent->r.mins, mins[0], mins[1], mins[2]);
+	VectorSet(ent->r.maxs, maxs[0], maxs[1], maxs[2]);
+
+	VectorSet(dest, 704, 152, ent->s.origin[2] - 4096);
+	G_Printf("^0Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
+	G_Printf("^0Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
+	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
+	if (tr.startsolid)
+	{
+		G_Printf("SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(ent->s.origin));
+		G_FreeEntity(ent);
+		return;
+	}
+
+	ent->s.eFlags = 0;
+	ent->r.svFlags |= SVF_PLAYER_USABLE;
+	ent->r.contents = CONTENTS_SOLID;
+	ent->clipmask = MASK_SOLID;
+
+	G_SetOrigin(ent, ent->s.origin);
+	G_SetAngles(ent, ent->s.angles);
+
+	ent->nextthink = level.time + FRAMETIME;
+	ent->think = Trigger_Pow_Resource;
+
+	trap_LinkEntity(ent);
+}*/
+
+void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent) {
+	ent->wait = 2;
+	ent->touch = Touch_Pow_Resource_Area;
+	ent->nextthink = level.time + FRAMETIME;
+	ent->think = helperfunctionforit;
+
+	//Init Trigger
+	InitTrigger(ent);
+	trap_LinkEntity(ent);
+
+
+
+	/*
+	
+	if (tr.startsolid)
+	{
+		G_Printf("SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(newEnt->s.origin));
+		G_FreeEntity(newEnt);
+		return;
+	}*/
+
+	//G_SetOrigin(newEnt, newEnt->s.origin);
+	//G_SetAngles(newEnt, newEnt->s.angles);
+
+	//can pick up the bomb from any angle
+	/*
+	maxs[0] += 16;
+	maxs[1] += 16;
+	maxs[2] += 16;
+
+	mins[0] -= 16;
+	mins[1] -= 16;
+	mins[2] -= 16;*/
+
+	/*
+	other = G_Spawn();
+	//VectorCopy(mins, other->r.mins);
+	//VectorCopy(maxs, other->r.maxs);
+	other->parent = ent;
+	other->r.contents = CONTENTS_TRIGGER;
+	other->touch = Touch_Pow_Resource;
+	other->use = Use_Pow_Resource;*/
+	//trap_LinkEntity(newEnt);
+}
+
+
 
 

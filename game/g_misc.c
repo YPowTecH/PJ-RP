@@ -3363,7 +3363,9 @@ void SP_Pow_Resource(gentity_t* ent) {
 	VectorSet(ent->r.mins, mins[0], mins[1], mins[2]);
 	VectorSet(ent->r.maxs, maxs[0], maxs[1], maxs[2]);
 
-	VectorSet(dest, ent->s.origin[0], ent->s.origin[1], ent->s.origin[2] - 4096);
+	VectorSet(dest, 704, 152, ent->s.origin[2] - 4096);
+	G_Printf("^0Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
+	G_Printf("^0Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
 	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
 	if (tr.startsolid)
 	{
@@ -3372,11 +3374,10 @@ void SP_Pow_Resource(gentity_t* ent) {
 		return;
 	}
 
-	/*
 	ent->s.eFlags = 0;
 	ent->r.svFlags |= SVF_PLAYER_USABLE;
 	ent->r.contents = CONTENTS_SOLID;
-	ent->clipmask = MASK_SOLID;*/
+	ent->clipmask = MASK_SOLID;
 
 	G_SetOrigin(ent, ent->s.origin);
 	G_SetAngles(ent, ent->s.angles);
