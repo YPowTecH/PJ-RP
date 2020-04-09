@@ -2,6 +2,8 @@
 //
 #include "g_local.h"
 
+void Trigger_Pow_Resource_In_Area(gentity_t* ent);
+
 int gTrigFallSound;
 
 void InitTrigger( gentity_t *self ) {
@@ -585,27 +587,13 @@ void SP_func_timer( gentity_t *self ) {
 
 	self->r.svFlags = SVF_NOCLIENT;
 }
-void aboutnothing(gentity_t* ent) {
-	G_Printf("^1nothing\n");
-}
 
-void helperfunctionforit(gentity_t* ent) {
-	gentity_t* newEnt;
-	vec3_t dest;
-	trace_t tr;
-	vec3_t mins, maxs;
-	int minsResource[3] = { -2, -2, -2 };
-	int maxsResource[3] = { 2, 2, 2 };
-
+float findNewLocation(float min, float max) {
 	//RNG garbage...
 	int rng = 0;
 	int wtf = 0;
-	float i, j, rngx, rngy;
+	float i, j, result;
 	int k;
-
-	// find the bounds of the trigger
-	VectorCopy(ent->r.absmin, mins);
-	VectorCopy(ent->r.absmax, maxs);
 
 	//Generate random spawn location in the area
 	i = (int)(crandom() * 1000);
@@ -613,53 +601,31 @@ void helperfunctionforit(gentity_t* ent) {
 	k = irand(0, j);
 	wtf = level.time + i * k;
 	Rand_Init(wtf);
-	rngx = irand(ent->r.absmin[0], ent->r.absmax[0]);
-	rngy = irand(ent->r.absmin[1], ent->r.absmax[1]);
 
-	//Spawn the resource
-	newEnt = G_Spawn();
-	newEnt->s.modelindex = G_ModelIndex("models/map_objects/cinematics/chair.md3");
-	//newEnt->s.modelindex = G_ModelIndex(ent->model);
-	//newEnt->parent = ent;
-
-	newEnt->s.eFlags = 0;
-	newEnt->r.svFlags |= SVF_PLAYER_USABLE;
-	newEnt->r.contents = CONTENTS_SOLID;
-	newEnt->clipmask = MASK_SOLID;
-
-	//set up its dimentions
-	VectorSet(newEnt->s.origin, rngx, rngy, ent->s.origin[2]);
-	VectorSet(newEnt->r.mins, minsResource[0], minsResource[1], minsResource[2]);
-	VectorSet(newEnt->r.maxs, maxsResource[0], maxsResource[1], maxsResource[2]);
-
-	G_Printf("^2Has been hit %.2f %.2f %.2f\n", newEnt->s.origin[0], newEnt->s.origin[1], newEnt->s.origin[2]);
-	VectorSet(dest, newEnt->s.origin[0], newEnt->s.origin[1], newEnt->s.origin[2] - 4096);
-	G_Printf("^3Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
-	trap_Trace(&tr, newEnt->s.origin, newEnt->r.mins, newEnt->r.maxs, dest, newEnt->s.number, MASK_SOLID);
-	G_Printf("^4Has been hit %d\n", newEnt->s.number);
-	if (tr.startsolid)
-	{
-		G_Printf("^6SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(ent->s.origin));
-		G_FreeEntity(ent);
-		return;
-	}
-
-	newEnt->think = aboutnothing;
-	newEnt->nextthink = level.time + FRAMETIME;
-
-	G_SetOrigin(newEnt, newEnt->s.origin);
-	VectorCopy(newEnt->s.angles, newEnt->s.apos.trBase);
-	//G_SetAngles(newEnt, newEnt->s.angles);
-
-
-	trap_LinkEntity(newEnt);
-
-	G_SoundIndex("sound/movers/objects/useshieldstation.wav");
-
-	newEnt->s.modelindex2 = G_ModelIndex("/models/items/psd_big.md3");	// Precache model
+	return result = irand(min, max);
 }
 
-void Pow_Resource_Areaz(gentity_t* self, gentity_t* activator) {
+trace_t setupTheResource(gentity_t* ent, float x, float y, float z) {
+	vec3_t dest;
+	trace_t tr;
+	int minsResource[3] = { -8, -8, 0 };
+	int maxsResource[3] = { 8, 8, 32 };
+
+	//set up its dimentions
+	VectorSet(ent->s.origin, x, y, z);
+	VectorSet(ent->r.mins, minsResource[0], minsResource[1], minsResource[2]);
+	VectorSet(ent->r.maxs, maxsResource[0], maxsResource[1], maxsResource[2]);
+
+	//G_Printf("^2Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
+	VectorSet(dest, ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
+	//G_Printf("^3Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
+	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
+
+	return tr;
+}
+
+
+void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 	if (!activator->client)
 	{
 		return;
@@ -670,67 +636,78 @@ void Pow_Resource_Areaz(gentity_t* self, gentity_t* activator) {
 		return;
 	}
 
-	if (level.time < self->wait) {
-		return;
-	}
+	trap_UnlinkEntity(self);
 
-	self->wait = level.time + 5 * 1000;
-	self->think = helperfunctionforit;
-	self->nextthink = self->wait;
 
-	G_Printf("^2Has been hit\n");
+	//G_FreeEntity(self->parent);
+
+	self->parent->think = Trigger_Pow_Resource_In_Area;
+	self->parent->nextthink = level.time + self->parent->wait * 1000;
+	G_FreeEntity(self);
 }
 
-void Touch_Pow_Resource_Area(gentity_t* self, gentity_t* other, trace_t* trace) {
+void Use_Pow_Resource_t(gentity_t* self, gentity_t* other, gentity_t* activator) {
+	Pow_Resource_t(self, activator);
+}
+
+void Touch_Pow_Resource_t(gentity_t* self, gentity_t* other, trace_t* trace) {
 	if (!other->client) {
 		return;
 	}
-	Pow_Resource_Areaz(self, other);
+	Pow_Resource_t(self, other);
 }
 
-/*
-void SP_Pow_Resource_t(gentity_t* ent) {
-	int mins[3] = { -2, -2, -2 };
-	int maxs[3] = { 2, 2, 2 };
-
-	vec3_t dest;
+void Trigger_Pow_Resource_In_Area(gentity_t* ent) {
+	gentity_t* newEnt;
 	trace_t tr;
+	float rngx, rngy;
 
-	ent->s.modelindex = G_ModelIndex(ent->model);
+	//Copy the bounds of the trigger
+	//VectorCopy(ent->r.absmin, );
+	//VectorCopy(ent->r.absmax, );
 
-	VectorSet(ent->r.mins, mins[0], mins[1], mins[2]);
-	VectorSet(ent->r.maxs, maxs[0], maxs[1], maxs[2]);
+	//Pick a spawn location within that trigger
+	rngx = findNewLocation(ent->r.absmin[0], ent->r.absmax[0]);
+	rngy = findNewLocation(ent->r.absmin[1], ent->r.absmax[1]);
 
-	VectorSet(dest, 704, 152, ent->s.origin[2] - 4096);
-	G_Printf("^0Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
-	G_Printf("^0Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
-	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
-	if (tr.startsolid)
-	{
-		G_Printf("SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(ent->s.origin));
-		G_FreeEntity(ent);
-		return;
+	//Spawn the resource
+	newEnt = G_Spawn();
+	newEnt->parent = ent;
+	newEnt->s.modelindex = G_ModelIndex(ent->roffname);
+
+	newEnt->s.eFlags = 0;
+	//newEnt->r.svFlags |= SVF_PLAYER_USABLE;
+	newEnt->r.contents = CONTENTS_SOLID;
+	newEnt->clipmask = MASK_SOLID;
+	newEnt->touch = Touch_Pow_Resource_t;
+	newEnt->use = Use_Pow_Resource_t;
+
+	tr = setupTheResource(newEnt, rngx, rngy, ent->r.absmin[2] + 2.00);
+
+	while (!tr.startsolid) {
+		G_Printf("^6Got stuck in something%s\n", vtos(newEnt->s.origin));
+
+		//Pick a NEW spawn location within that trigger
+		rngx = findNewLocation(ent->r.absmin[0], ent->r.absmax[0]);
+		rngy = findNewLocation(ent->r.absmin[1], ent->r.absmax[1]);
+
+		tr = setupTheResource(newEnt, rngx, rngy, ent->r.absmin[2] + 2.00);
 	}
 
-	ent->s.eFlags = 0;
-	ent->r.svFlags |= SVF_PLAYER_USABLE;
-	ent->r.contents = CONTENTS_SOLID;
-	ent->clipmask = MASK_SOLID;
+	G_SetOrigin(newEnt, newEnt->s.origin);
+	VectorCopy(newEnt->s.angles, newEnt->s.apos.trBase);
+	//G_SetAngles(newEnt, newEnt->s.angles);
 
-	G_SetOrigin(ent, ent->s.origin);
-	G_SetAngles(ent, ent->s.angles);
+	trap_LinkEntity(newEnt);
 
-	ent->nextthink = level.time + FRAMETIME;
-	ent->think = Trigger_Pow_Resource;
+	G_SoundIndex("sound/movers/objects/useshieldstation.wav");
 
-	trap_LinkEntity(ent);
-}*/
+	newEnt->s.modelindex2 = G_ModelIndex("models/map_objects/bespin/bench.md3");
+}
 
 void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent) {
-	ent->wait = 2;
-	ent->touch = Touch_Pow_Resource_Area;
 	ent->nextthink = level.time + FRAMETIME;
-	ent->think = helperfunctionforit;
+	ent->think = Trigger_Pow_Resource_In_Area;
 
 	//Init Trigger
 	InitTrigger(ent);
