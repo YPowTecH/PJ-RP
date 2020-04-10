@@ -2,7 +2,7 @@
 //
 #include "g_local.h"
 
-void Trigger_Pow_Resource_In_Area(gentity_t* ent);
+void Item_Pow_Resource_In_Area(gentity_t* ent);
 
 int gTrigFallSound;
 
@@ -638,11 +638,12 @@ void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 
 	trap_UnlinkEntity(self);
 
-
-	//G_FreeEntity(self->parent);
-
-	self->parent->think = Trigger_Pow_Resource_In_Area;
-	self->parent->nextthink = level.time + self->parent->wait * 1000;
+	//setup the trigger area to spawn another item
+	self->parent->parent->think = Item_Pow_Resource_In_Area;
+	self->parent->parent->nextthink = level.time + self->parent->parent->wait * 1000;
+	
+	//free the trigger then free the item
+	G_FreeEntity(self->parent);
 	G_FreeEntity(self);
 }
 
@@ -657,7 +658,34 @@ void Touch_Pow_Resource_t(gentity_t* self, gentity_t* other, trace_t* trace) {
 	Pow_Resource_t(self, other);
 }
 
-void Trigger_Pow_Resource_In_Area(gentity_t* ent) {
+void Item_Pow_Resource_In_Area_Trigger(gentity_t* ent) {
+	gentity_t* newEnt;
+	vec3_t		mins, maxs;
+	// find the bounds of everything on the team
+	VectorCopy(ent->r.absmin, mins);
+	VectorCopy(ent->r.absmax, maxs);
+
+	//can pick up the bomb from any angle
+	maxs[0] += 16;
+	maxs[1] += 16;
+	maxs[2] += 16;
+
+	mins[0] -= 16;
+	mins[1] -= 16;
+	mins[2] -= 16;
+
+	newEnt = G_Spawn();
+	VectorCopy(mins, newEnt->r.mins);
+	VectorCopy(maxs, newEnt->r.maxs);
+	newEnt->parent = ent;
+	newEnt->r.contents = CONTENTS_TRIGGER;
+	newEnt->touch = Touch_Pow_Resource_t;
+	newEnt->use = Use_Pow_Resource_t;
+
+	trap_LinkEntity(newEnt);
+}
+
+void Item_Pow_Resource_In_Area(gentity_t* ent) {
 	gentity_t* newEnt;
 	trace_t tr;
 	float rngx, rngy;
@@ -679,8 +707,10 @@ void Trigger_Pow_Resource_In_Area(gentity_t* ent) {
 	//newEnt->r.svFlags |= SVF_PLAYER_USABLE;
 	newEnt->r.contents = CONTENTS_SOLID;
 	newEnt->clipmask = MASK_SOLID;
-	newEnt->touch = Touch_Pow_Resource_t;
-	newEnt->use = Use_Pow_Resource_t;
+	//newEnt->touch = Touch_Pow_Resource_t;
+	//newEnt->use = Use_Pow_Resource_t;
+	newEnt->nextthink = level.time + FRAMETIME;
+	newEnt->think = Item_Pow_Resource_In_Area_Trigger;
 
 	tr = setupTheResource(newEnt, rngx, rngy, ent->r.absmin[2] + 2.00);
 
@@ -707,7 +737,7 @@ void Trigger_Pow_Resource_In_Area(gentity_t* ent) {
 
 void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent) {
 	ent->nextthink = level.time + FRAMETIME;
-	ent->think = Trigger_Pow_Resource_In_Area;
+	ent->think = Item_Pow_Resource_In_Area;
 
 	//Init Trigger
 	InitTrigger(ent);
