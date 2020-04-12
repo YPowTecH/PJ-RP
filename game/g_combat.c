@@ -1790,7 +1790,7 @@ player_die
 */
 extern stringID_table_t animTable[MAX_ANIMATIONS+1];
 void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int meansOfDeath ) {
-	gentity_t	*ent;
+	gentity_t *ent;
 	int			anim;
 	int			contents;
 	int			killer;
@@ -1874,6 +1874,27 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	G_LogPrintf("Kill: %i %i %i: %s killed %s by %s\n", 
 		killer, self->s.number, meansOfDeath, killerName, 
 		self->client->pers.netname, obit );
+
+	//PowTecH - General Stats: Killed/Died
+	/*ent = &g_entities[self->client->ps.otherKiller];
+	ent->client->sess.gsKills++;
+	self->client->sess.gsDeaths++;
+	G_LogPrintf("Kill: %s^7(^5%d^7) killed %s^7(^6%d^7)\n",
+		ent->client->pers.netname,
+		ent->client->sess.gsKills,
+		self->client->pers.netname,
+		self->client->sess.gsDeaths
+	);
+
+	//PowTecH - RP: Kills give money
+	ent->client->sess.rpMoney++;
+	G_LogPrintf("Kill: %s^7(^2%d^7) killed %s^7(^1%d^7)\n",
+		ent->client->pers.netname,
+		ent->client->sess.rpMoney,
+		self->client->pers.netname,
+		self->client->sess.rpMoney
+	);*/
+	
 
 	if ( g_austrian.integer 
 		&& g_gametype.integer == GT_TOURNAMENT 
@@ -2145,68 +2166,68 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	{
 		// normal death
 		
-		static int i;
+	static int i;
 
-		switch ( i ) {
-		case 0:
-			anim = BOTH_DEATH1;
-			break;
-		case 1:
-			anim = BOTH_DEATH2;
-			break;
-		case 2:
-		default:
-			anim = BOTH_DEATH3;
-			break;
-		}
+	switch ( i ) {
+	case 0:
+		anim = BOTH_DEATH1;
+		break;
+	case 1:
+		anim = BOTH_DEATH2;
+		break;
+	case 2:
+	default:
+		anim = BOTH_DEATH3;
+		break;
+	}
 		
-		anim = G_PickDeathAnim(self, self->pos1, damage, meansOfDeath, HL_NONE);
+	anim = G_PickDeathAnim(self, self->pos1, damage, meansOfDeath, HL_NONE);
 
-		if (anim < 1)
-		{
-			anim = BOTH_DEATH1;
-		}
+	if (anim < 1)
+	{
+		anim = BOTH_DEATH1;
+	}
 
-		if (meansOfDeath == MOD_SABER)
-		{
-			G_CheckForDismemberment(self, self->pos1, damage, anim);
-		}
+	if (meansOfDeath == MOD_SABER)
+	{
+		G_CheckForDismemberment(self, self->pos1, damage, anim);
+	}
 
-		// for the no-blood option, we need to prevent the health
-		// from going to gib level
-		if ( self->health <= GIB_HEALTH ) {
-			self->health = GIB_HEALTH+1;
-		}
+	// for the no-blood option, we need to prevent the health
+	// from going to gib level
+	if ( self->health <= GIB_HEALTH ) {
+		self->health = GIB_HEALTH+1;
+	}
 
-		self->client->respawnTime = level.time + 1000;//((self->client->animations[anim].numFrames*40)/(50.0f / self->client->animations[anim].frameLerp))+300;
+	self->client->respawnTime = level.time + 1000;//((self->client->animations[anim].numFrames*40)/(50.0f / self->client->animations[anim].frameLerp))+300;
 
-		self->client->ps.legsAnim = 
-			( ( self->client->ps.legsAnim & ANIM_TOGGLEBIT ) ^ ANIM_TOGGLEBIT ) | anim;
-		self->client->ps.torsoAnim = 
-			( ( self->client->ps.torsoAnim & ANIM_TOGGLEBIT ) ^ ANIM_TOGGLEBIT ) | anim;
+	self->client->ps.legsAnim = 
+		( ( self->client->ps.legsAnim & ANIM_TOGGLEBIT ) ^ ANIM_TOGGLEBIT ) | anim;
+	self->client->ps.torsoAnim = 
+		( ( self->client->ps.torsoAnim & ANIM_TOGGLEBIT ) ^ ANIM_TOGGLEBIT ) | anim;
 //		self->client->ps.pm_flags |= PMF_UPDATE_ANIM;		// Make sure the pmove sets up the GHOUL2 anims.
 
-		//rww - do this on respawn, not death
-		//CopyToBodyQue (self);
+	//rww - do this on respawn, not death
+	//CopyToBodyQue (self);
 
-		//G_AddEvent( self, EV_DEATH1 + i, killer );
-		if (wasJediMaster)
-		{
-			G_AddEvent( self, EV_DEATH1 + i, 1 );
-		}
-		else
-		{
-			G_AddEvent( self, EV_DEATH1 + i, 0 );
-		}
+	//G_AddEvent( self, EV_DEATH1 + i, killer );
+	if (wasJediMaster)
+	{
+		G_AddEvent( self, EV_DEATH1 + i, 1 );
+	}
+	else
+	{
+		G_AddEvent( self, EV_DEATH1 + i, 0 );
+	}
 
-		// the body can still be gibbed
-		self->die = body_die;
+	// the body can still be gibbed
+	self->die = body_die;
 
-		//It won't gib, it will disintegrate (because this is Star Wars).
-		self->takedamage = qtrue;
+	//It won't gib, it will disintegrate (because this is Star Wars).
+	self->takedamage = qtrue;
 
-		// globally cycle through the different death animations
-		i = ( i + 1 ) % 3;
+	// globally cycle through the different death animations
+	i = ( i + 1 ) % 3;
 	}
 
 	trap_LinkEntity (self);

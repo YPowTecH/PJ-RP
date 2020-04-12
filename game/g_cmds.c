@@ -2808,12 +2808,27 @@ void Cmd_Logout_f(gentity_t* ent) {
 	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Your information was saved^5]^7\n\""));
 	ent->client->sess.id = 0;
 	Q_strncpyz(ent->client->sess.password, "", sizeof(ent->client->sess.password));
-	//ent->client->sess.powerLevel = 0;
-	//Q_strncpyz(ent->client->sess.powerBit, "", sizeof(ent->client->sess.powerBit));
 	Q_strncpyz(ent->client->sess.userlogged, "", sizeof(ent->client->sess.userlogged));
 	Q_strncpyz(ent->client->sess.displayName, "", sizeof(ent->client->sess.displayName));
+	ent->client->sess.rpMoney = 0;
+	//ent->client->sess.powerLevel = 0;
+	//Q_strncpyz(ent->client->sess.powerBit, "", sizeof(ent->client->sess.powerBit));
 	//Q_strncpyz(ent->client->sess.emoteBit, "", sizeof(ent->client->sess.emoteBit));
 	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7You are now logged out^2]^7\n\""));
+}
+/*
+=================
+*/
+
+/*
+=================
+Lookup Commands
+by PowTecH
+=================
+*/
+
+void Cmd_Lookup_Money_f(gentity_t* ent) {
+	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Credits: ^3%d^5]^7\n\"", ent->client->sess.rpMoney));
 }
 
 
@@ -2860,7 +2875,8 @@ static const clientCommand_t commands[] = {
 	//By PowTecH - Account: login commands
 	{ "amregister", Cmd_Register_f, CMD_NOINTERMISSION },
 	{ "amlogin", Cmd_Login_f, CMD_NOINTERMISSION },
-	{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION }
+	{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION },
+	{ "ammoney", Cmd_Lookup_Money_f, CMD_NOINTERMISSION }
 };
 //PowTecH - End
 
