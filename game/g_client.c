@@ -2329,6 +2329,9 @@ void ClientDisconnect( int clientNum ) {
 		}
 	}
 
+	//PowTecH: RP - Logout and save
+	Cmd_Logout_f(ent);
+
 	trap_UnlinkEntity (ent);
 	ent->s.modelindex = 0;
 	ent->inuse = qfalse;

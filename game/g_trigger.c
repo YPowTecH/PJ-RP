@@ -588,7 +588,20 @@ void SP_func_timer( gentity_t *self ) {
 	self->r.svFlags = SVF_NOCLIENT;
 }
 
-float findNewLocation(float min, float max) {
+void printMoneyEarned(gentity_t *ent, float amount, float deviation) {
+	float result;
+	float min, max;
+
+	//min = amount - deviation;
+	//max = amount + deviation;
+
+	//result = findNewRandomNumberBetweenTwo(min, max);
+	result = deviation;
+	ent->client->sess.rpMoney += result;
+	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Credits: ^2+^3%.0f^5]^7\n\"", result));
+}
+
+float findNewRandomNumberBetweenTwo(float min, float max) {
 	//RNG garbage...
 	int rng = 0;
 	int wtf = 0;
@@ -621,9 +634,9 @@ trace_t setupTheResource(gentity_t* ent, float x, float y, float z) {
 	//G_Printf("^3Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
 	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
 
+
 	return tr;
 }
-
 
 void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 	if (!activator->client)
@@ -635,6 +648,9 @@ void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 	{
 		return;
 	}
+
+	//print and give the money to the ent
+	printMoneyEarned(activator, self->parent->parent->delay, self->parent->parent->random);
 
 	trap_UnlinkEntity(self);
 
@@ -695,8 +711,8 @@ void Item_Pow_Resource_In_Area(gentity_t* ent) {
 	//VectorCopy(ent->r.absmax, );
 
 	//Pick a spawn location within that trigger
-	rngx = findNewLocation(ent->r.absmin[0], ent->r.absmax[0]);
-	rngy = findNewLocation(ent->r.absmin[1], ent->r.absmax[1]);
+	rngx = findNewRandomNumberBetweenTwo(ent->r.absmin[0], ent->r.absmax[0]);
+	rngy = findNewRandomNumberBetweenTwo(ent->r.absmin[1], ent->r.absmax[1]);
 
 	//Spawn the resource
 	newEnt = G_Spawn();
@@ -718,8 +734,8 @@ void Item_Pow_Resource_In_Area(gentity_t* ent) {
 		G_Printf("^6Got stuck in something%s\n", vtos(newEnt->s.origin));
 
 		//Pick a NEW spawn location within that trigger
-		rngx = findNewLocation(ent->r.absmin[0], ent->r.absmax[0]);
-		rngy = findNewLocation(ent->r.absmin[1], ent->r.absmax[1]);
+		rngx = findNewRandomNumberBetweenTwo(ent->r.absmin[0], ent->r.absmax[0]);
+		rngy = findNewRandomNumberBetweenTwo(ent->r.absmin[1], ent->r.absmax[1]);
 
 		tr = setupTheResource(newEnt, rngx, rngy, ent->r.absmin[2] + 2.00);
 	}
