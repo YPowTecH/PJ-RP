@@ -588,19 +588,6 @@ void SP_func_timer( gentity_t *self ) {
 	self->r.svFlags = SVF_NOCLIENT;
 }
 
-void printMoneyEarned(gentity_t *ent, float amount, float deviation) {
-	float result;
-	float min, max;
-
-	//min = amount - deviation;
-	//max = amount + deviation;
-
-	//result = findNewRandomNumberBetweenTwo(min, max);
-	result = deviation;
-	ent->client->sess.rpMoney += result;
-	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Credits: ^2+^3%.0f^5]^7\n\"", result));
-}
-
 float findNewRandomNumberBetweenTwo(float min, float max) {
 	//RNG garbage...
 	int rng = 0;
@@ -618,6 +605,18 @@ float findNewRandomNumberBetweenTwo(float min, float max) {
 	return result = irand(min, max);
 }
 
+void giveMoneyToPlayer(gentity_t *ent, float amount, float deviation) {
+	int result;
+	float min, max;
+
+	min = amount - deviation;
+	max = amount + deviation;
+
+	result = (int)findNewRandomNumberBetweenTwo(min, max);
+	ent->client->sess.rpMoney += result;
+	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Credits: ^2+^3%d^5]^7\n\"", result));
+}
+
 trace_t setupTheResource(gentity_t* ent, float x, float y, float z) {
 	vec3_t dest;
 	trace_t tr;
@@ -629,11 +628,8 @@ trace_t setupTheResource(gentity_t* ent, float x, float y, float z) {
 	VectorSet(ent->r.mins, minsResource[0], minsResource[1], minsResource[2]);
 	VectorSet(ent->r.maxs, maxsResource[0], maxsResource[1], maxsResource[2]);
 
-	//G_Printf("^2Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
 	VectorSet(dest, ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
-	//G_Printf("^3Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
 	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
-
 
 	return tr;
 }
@@ -650,8 +646,7 @@ void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 	}
 
 	//print and give the money to the ent
-	printMoneyEarned(activator, self->parent->parent->delay, self->parent->parent->random);
-
+	giveMoneyToPlayer(activator, self->parent->parent->count, self->parent->parent->random);
 	trap_UnlinkEntity(self);
 
 	//setup the trigger area to spawn another item
@@ -677,6 +672,7 @@ void Touch_Pow_Resource_t(gentity_t* self, gentity_t* other, trace_t* trace) {
 void Item_Pow_Resource_In_Area_Trigger(gentity_t* ent) {
 	gentity_t* newEnt;
 	vec3_t		mins, maxs;
+
 	// find the bounds of everything on the team
 	VectorCopy(ent->r.absmin, mins);
 	VectorCopy(ent->r.absmax, maxs);
@@ -706,10 +702,6 @@ void Item_Pow_Resource_In_Area(gentity_t* ent) {
 	trace_t tr;
 	float rngx, rngy;
 
-	//Copy the bounds of the trigger
-	//VectorCopy(ent->r.absmin, );
-	//VectorCopy(ent->r.absmax, );
-
 	//Pick a spawn location within that trigger
 	rngx = findNewRandomNumberBetweenTwo(ent->r.absmin[0], ent->r.absmax[0]);
 	rngy = findNewRandomNumberBetweenTwo(ent->r.absmin[1], ent->r.absmax[1]);
@@ -720,11 +712,8 @@ void Item_Pow_Resource_In_Area(gentity_t* ent) {
 	newEnt->s.modelindex = G_ModelIndex(ent->roffname);
 
 	newEnt->s.eFlags = 0;
-	//newEnt->r.svFlags |= SVF_PLAYER_USABLE;
 	newEnt->r.contents = CONTENTS_SOLID;
 	newEnt->clipmask = MASK_SOLID;
-	//newEnt->touch = Touch_Pow_Resource_t;
-	//newEnt->use = Use_Pow_Resource_t;
 	newEnt->nextthink = level.time + FRAMETIME;
 	newEnt->think = Item_Pow_Resource_In_Area_Trigger;
 
@@ -755,43 +744,12 @@ void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent) {
 	ent->nextthink = level.time + FRAMETIME;
 	ent->think = Item_Pow_Resource_In_Area;
 
+	G_SpawnInt("count", "1", &ent->count);
+	G_SpawnFloat("random", "0", &ent->wait);
+
 	//Init Trigger
 	InitTrigger(ent);
 	trap_LinkEntity(ent);
-
-
-
-	/*
-	
-	if (tr.startsolid)
-	{
-		G_Printf("SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(newEnt->s.origin));
-		G_FreeEntity(newEnt);
-		return;
-	}*/
-
-	//G_SetOrigin(newEnt, newEnt->s.origin);
-	//G_SetAngles(newEnt, newEnt->s.angles);
-
-	//can pick up the bomb from any angle
-	/*
-	maxs[0] += 16;
-	maxs[1] += 16;
-	maxs[2] += 16;
-
-	mins[0] -= 16;
-	mins[1] -= 16;
-	mins[2] -= 16;*/
-
-	/*
-	other = G_Spawn();
-	//VectorCopy(mins, other->r.mins);
-	//VectorCopy(maxs, other->r.maxs);
-	other->parent = ent;
-	other->r.contents = CONTENTS_TRIGGER;
-	other->touch = Touch_Pow_Resource;
-	other->use = Use_Pow_Resource;*/
-	//trap_LinkEntity(newEnt);
 }
 
 
