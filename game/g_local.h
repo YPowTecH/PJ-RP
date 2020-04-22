@@ -454,6 +454,15 @@ struct gclient_s {
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
+//By PowTecH - RP: house object 
+typedef struct {
+	int		id;
+	char	name[MAX_NETNAME];
+	int		buy;
+	int		sell;
+	int		ownerId;
+} houseList_t;
+
 typedef struct {
 	struct gclient_s	*clients;		// [maxclients]
 
@@ -540,8 +549,11 @@ typedef struct {
 	// MVSDK
 	qboolean	bboxEncoding;
 
-	//PowTecH - Account: 
+	//PowTecH - Account: Track the user account total
 	int			dbUserCount;
+
+	//PowTecH - RP: Keep track of all the houses
+	houseList_t	houseList[MAX_TOKEN_CHARS];
 
 } level_locals_t;
 
@@ -762,9 +774,8 @@ void ATST_ManageDamageBoxes(gentity_t *ent);
 int G_PlayerBecomeATST(gentity_t *ent);
 void G_CreateExampleAnimEnt(gentity_t *ent);
 
-//PowTecH - RP: resource spawn
-void SP_Pow_Resource(gentity_t* ent);
-
+//PowTecH - RP: House target
+void SP_Pow_House(gentity_t* ent);
 
 //
 // g_weapon.c

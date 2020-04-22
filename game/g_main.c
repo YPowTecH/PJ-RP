@@ -755,7 +755,11 @@ G_InitGame
 ============
 */
 void G_InitGame( int levelTime, int randomSeed, int restart ) {
-	int					i;
+	int i, j;
+	char userfile[MAX_TOKEN_CHARS] = "";
+	char buffer[MAX_TOKEN_CHARS] = "";
+	int len;
+	fileHandle_t f;
 
 	B_InitAlloc(); //make sure everything is clean
 
@@ -939,6 +943,37 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	G_Printf("^2[^7Init Server Settings^2]^7\n");
 	G_Printf("^2-----------------------------------\n");
 	level.dbUserCount = -1;
+	
+	G_Printf("^2[^7Init House List^2]^7\n");
+	G_Printf("^2-----------------------------------\n");
+	//By PowTecH - RPG: House List
+	//-PNOTE: ENSURE THAT THEIR IS A TRAILING SPACE IN THIS FILE
+	//	OTHERWISE IT WILL BE AN INF LOOP
+
+	Com_sprintf(userfile, sizeof(userfile), "rpg/houses/csgo.cfg");
+	trap_FS_FOpenFile(userfile, &f, FS_READ);
+
+	if (f) {
+		trap_FS_FCloseFile(f);
+		len = trap_FS_FOpenFile(userfile, &f, FS_READ);
+		trap_FS_Read(buffer, len, f);
+
+		j = 0;
+		i = atoi(Twimod_Splitstring(buffer, ' '));
+
+		while (i > 0) {
+			level.houseList[j].id = i;
+			strcpy(level.houseList[j].name, Twimod_Splitstring(NULL, ' '));
+			strcpy(level.houseList[j].name, strrep(level.houseList[j].name, '_', ' '));//clear the underscores
+			level.houseList[j].buy = atoi(Twimod_Splitstring(NULL, ' '));
+			level.houseList[j].sell = atoi(Twimod_Splitstring(NULL, ' '));
+			level.houseList[j].ownerId = atoi(Twimod_Splitstring(NULL, ' '));
+
+			i = atoi(Twimod_Splitstring(NULL, ' '));
+			j++;
+		}
+		trap_FS_FCloseFile(f);
+	}
 }
 
 

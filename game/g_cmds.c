@@ -2530,6 +2530,40 @@ int help_readSys_f(gentity_t* ent) {
 	}
 }
 
+void help_writeHouse_f(gentity_t* ent, char* userfile) {
+	int i, j;
+	char userwrite[MAX_TOKEN_CHARS];
+	fileHandle_t	f;
+
+	char tempName[MAX_TOKEN_CHARS];
+
+	strcpy(tempName, level.houseList[0].name);
+	strcpy(tempName, strrep(tempName, ' ', '_'));
+
+	//to clear the file
+	trap_FS_FOpenFile(userfile, &f, FS_WRITE);
+	Com_sprintf(userwrite, sizeof(userwrite), "%i %s %i %i %i ",
+		level.houseList[0].id, tempName, level.houseList[0].buy,
+		level.houseList[0].sell, level.houseList[0].ownerId);
+	trap_FS_Write(userwrite, strlen(userwrite), f);
+	trap_FS_FCloseFile(f);
+
+	//to add the rest of the houses to the file
+	trap_FS_FOpenFile(userfile, &f, FS_APPEND);
+	for (i = 1; i < ARRAY_LEN(level.houseList); i++) {
+		if (!level.houseList[i].id) {
+			break;
+		}
+		strcpy(tempName, level.houseList[i].name);
+		strcpy(tempName, strrep(tempName, ' ', '_'));
+		Com_sprintf(userwrite, sizeof(userwrite), "%i %s %i %i %i ",
+			level.houseList[i].id, tempName, level.houseList[i].buy,
+			level.houseList[i].sell, level.houseList[i].ownerId);
+		trap_FS_Write(userwrite, strlen(userwrite), f);
+	}
+	trap_FS_FCloseFile(f);
+}
+
 /*
 =================
 */
@@ -2669,7 +2703,7 @@ void Cmd_Login_f(gentity_t* ent) {
 
 	// Dont bother looking for something that doesnt exist
 	if (level.dbUserCount <= 0) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7No users registered^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("No users registered", 1));
 		return;
 	}
 
@@ -2683,20 +2717,20 @@ void Cmd_Login_f(gentity_t* ent) {
 	}
 
 	if (Q_stricmp(ent->client->sess.userlogged, "") != 0) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are already logged in^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("You are already logged in", 1));
 		return;
 	}
 
 	// Check the user don't try to much :P
 	if (ent->client->sess.logintrys >= 5) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You try to much. Command ignored^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("You try to much. Command ignored", 1));
 		return;
 	}
 
 	// Should never happen actually...
 	if (strchr(username, ' ') || strchr(pass, ' ')) {
 		// User is not allowed to have spaces in his name or in his password...
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Usernames and passwords does not include spaces^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Usernames and passwords does not include spaces", 1));
 		return;
 	}
 
@@ -2729,7 +2763,7 @@ void Cmd_Login_f(gentity_t* ent) {
 
 	//incorrect information
 	if (!found) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Incorrect username or password^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Incorrect username or password", 1));
 		return;
 	}
 
@@ -2773,7 +2807,7 @@ void Cmd_Logout_f(gentity_t* ent) {
 
 	fileHandle_t	f;
 	if ((Q_stricmp(ent->client->sess.userlogged, "") == 0)) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7You are not logged in^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("You are not logged in", 1));
 		return;
 	}
 
@@ -2799,13 +2833,13 @@ void Cmd_Logout_f(gentity_t* ent) {
 	}
 
 	if (!found) {
-		trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Your account was deleted or modified^1]^7\n\""));
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Your account was deleted or modified", 1));
 		return;
 	}
 
 	help_write_f(ent, userfile);
 
-	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Your information was saved^5]^7\n\""));
+	trap_SendServerCommand(ent - g_entities, Pow_Output("Your information was saved", 5));
 	ent->client->sess.id = 0;
 	Q_strncpyz(ent->client->sess.password, "", sizeof(ent->client->sess.password));
 	Q_strncpyz(ent->client->sess.userlogged, "", sizeof(ent->client->sess.userlogged));
@@ -2814,8 +2848,156 @@ void Cmd_Logout_f(gentity_t* ent) {
 	//ent->client->sess.powerLevel = 0;
 	//Q_strncpyz(ent->client->sess.powerBit, "", sizeof(ent->client->sess.powerBit));
 	//Q_strncpyz(ent->client->sess.emoteBit, "", sizeof(ent->client->sess.emoteBit));
-	trap_SendServerCommand(ent - g_entities, va("print \"^2[^7You are now logged out^2]^7\n\""));
+	trap_SendServerCommand(ent - g_entities, Pow_Output("You are now logged out", 2));
 }
+
+/*
+=================
+RP: Lookup Houses
+By PowTecH
+=================
+*/
+void Cmd_House_List_f(gentity_t* ent) {
+	int i;
+	houseList_t h;
+
+	for (i = 0; i < ARRAY_LEN(level.houseList); i++) {
+		if (!level.houseList[i].id) {
+			break;
+		}
+		h = level.houseList[i];
+
+		if (h.ownerId > 0 && h.ownerId == ent->client->sess.id) {
+			trap_SendServerCommand(ent - g_entities, va("print \"^5[^7%i^5] [^7%s ^7- ^3%i^5] ^2[OWNED]^7\n\"", h.id, h.name, h.buy));
+		}
+		else if (h.ownerId > 0) {
+			trap_SendServerCommand(ent - g_entities, va("print \"^5[^7%i^5] [^7%s ^7- ^3%i^5] ^1[OWNED]^7\n\"", h.id, h.name, h.buy));
+		}
+		else {
+			trap_SendServerCommand(ent - g_entities, va("print \"^5[^7%i^5] [^7%s ^7- ^3%i^5]^7\n\"", h.id, h.name, h.buy));
+		}
+	}
+}
+
+/*
+=================
+RP: Buy a House
+By PowTecH
+=================
+*/
+void Cmd_House_Buy_f(gentity_t* ent) {
+	int i;
+	houseList_t h;
+	char houseID[7] = "";
+
+	char userfile[MAX_TOKEN_CHARS];
+	fileHandle_t	f;
+
+	trap_Argv(1, houseID, sizeof(houseID));
+
+	if (Q_stricmp(houseID, "") == 0) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1/^7pjhousebuy ^1<^7id^1>^7\n\"", houseID));
+		return;
+	}
+
+	for (i = 0; i < ARRAY_LEN(level.houseList); i++) {
+		if (!level.houseList[i].id) {
+			break;
+		}
+		h = level.houseList[i];
+
+		//found the house they were looking for
+		if (h.id == atoi(houseID)) {
+			//you already own this house
+			if (h.ownerId > 0 && h.ownerId == ent->client->sess.id) {
+				trap_SendServerCommand(ent - g_entities, Pow_Output("You already own this house", 2));
+				return;
+			}
+			//someone already owns that house
+			else if (h.ownerId > 0) {
+				trap_SendServerCommand(ent - g_entities, Pow_Output("House already owned", 1));
+				return;
+			}
+
+			//dont have enough money
+			if (ent->client->sess.rpMoney < h.buy) {
+				trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Not enough money ^1- ^7%i^1/^7%i^1]^7\n\"", ent->client->sess.rpMoney, h.buy));
+				return;
+			}
+
+			//take their money
+			ent->client->sess.rpMoney -= h.buy;
+			//give them the house
+			level.houseList[i].ownerId = ent->client->sess.id;
+
+			Com_sprintf(userfile, sizeof(userfile), "rpg/houses/csgo.cfg", i);
+			trap_FS_FOpenFile(userfile, &f, FS_READ);
+			if (f) {
+				trap_FS_FCloseFile(f);
+				help_writeHouse_f(ent, userfile);
+			}
+
+			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' purchased for ^1-^3%i^2]^7\n\"", h.name, h.buy));
+			return;
+		}
+	}
+	trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Couldn't find house number '^1%s^7'^1]^7\n\"", houseID));
+}
+
+/*
+=================
+RP: Sell a House
+By PowTecH
+=================
+*/
+void Cmd_House_Sell_f(gentity_t* ent) {
+	int i;
+	houseList_t h;
+	char houseID[7] = "";
+
+	char userfile[MAX_TOKEN_CHARS];
+	fileHandle_t	f;
+
+	trap_Argv(1, houseID, sizeof(houseID));
+
+	if (Q_stricmp(houseID, "") == 0) {
+		trap_SendServerCommand(ent - g_entities, va("print \"^1/^7pjhousesell ^1<^7id^1>^7\n\"", houseID));
+		return;
+	}
+
+	for (i = 0; i < ARRAY_LEN(level.houseList); i++) {
+		if (!level.houseList[i].id) {
+			break;
+		}
+		h = level.houseList[i];
+
+		//found the house they were looking for
+		if (h.id == atoi(houseID)) {
+			//someone else owns that house
+			if (h.ownerId != ent->client->sess.id || h.ownerId == 0) {
+				trap_SendServerCommand(ent - g_entities, Pow_Output("Don't own house", 1));
+				return;
+			}
+
+			//take their money
+			ent->client->sess.rpMoney += h.sell;
+			//give them the house
+			level.houseList[i].ownerId = 0;
+
+			Com_sprintf(userfile, sizeof(userfile), "rpg/houses/csgo.cfg", i);
+			trap_FS_FOpenFile(userfile, &f, FS_READ);
+			if (f) {
+				trap_FS_FCloseFile(f);
+				help_writeHouse_f(ent, userfile);
+			}
+
+			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' sold for ^7'^2+$%i^7'^2]^7\n\"", h.name, h.sell));
+			return;
+		}
+	}
+	trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Couldn't find house number '^1%s^7'^1]^7\n\"", houseID));
+}
+
 /*
 =================
 */
@@ -2827,7 +3009,7 @@ by PowTecH
 =================
 */
 
-void Cmd_Lookup_Money_f(gentity_t* ent) {
+void Cmd_Money_Read_f(gentity_t* ent) {
 	trap_SendServerCommand(ent - g_entities, va("print \"^5[^7Credits: ^3%d^5]^7\n\"", ent->client->sess.rpMoney));
 }
 
@@ -2872,11 +3054,15 @@ static const clientCommand_t commands[] = {
 	{ "teamtask", Cmd_TeamTask_f, CMD_CHEAT | CMD_NOINTERMISSION },
 	{ "levelshot", Cmd_LevelShot_f, CMD_CHEAT | CMD_ALIVE | CMD_NOINTERMISSION },
 	{ "addbot", Cmd_AddBot_f, 0 },
-	//By PowTecH - Account: login commands
+	//PowTecH - Account: login commands
 	{ "amregister", Cmd_Register_f, CMD_NOINTERMISSION },
 	{ "amlogin", Cmd_Login_f, CMD_NOINTERMISSION },
 	{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION },
-	{ "ammoney", Cmd_Lookup_Money_f, CMD_NOINTERMISSION }
+	{ "ammoney", Cmd_Money_Read_f, CMD_NOINTERMISSION },
+	//PowTecH - RP: House commands
+	{ "pjhouselist", Cmd_House_List_f, CMD_NOINTERMISSION },
+	{ "pjhousebuy", Cmd_House_Buy_f, CMD_NOINTERMISSION },
+	{ "pjhousesell", Cmd_House_Sell_f, CMD_NOINTERMISSION }
 };
 //PowTecH - End
 

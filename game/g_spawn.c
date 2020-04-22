@@ -198,7 +198,6 @@ void SP_item_botroam( gentity_t *ent )
 void SP_emplaced_gun( gentity_t *ent );
 
 //PowTecH - RP: resource spawn
-void SP_Pow_Resource(gentity_t* ent);
 void SP_Trigger_Pow_Resource_Spawn_Area(gentity_t* ent);
 
 spawn_t	spawns[] = {
@@ -292,8 +291,9 @@ spawn_t	spawns[] = {
 
 	{"emplaced_gun", SP_emplaced_gun},
 
-	//PowTecH - RP: resource spawn
-	{"pow_resource", SP_Pow_Resource},
+	//PowTecH - RP: House target
+	{"target_pow_house", SP_Pow_House},
+	//PowTecH - RP: Resource spawn trigger
 	{"trigger_pow_resource_spawn_area", SP_Trigger_Pow_Resource_Spawn_Area},
 
 	{0, 0}

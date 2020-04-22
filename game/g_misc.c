@@ -13,6 +13,43 @@
 void HolocronThink(gentity_t *ent);
 extern vmCvar_t g_MaxHolocronCarry;
 
+/*
+==============================================================================
+
+PowTecH: RP - House Door Unlocked to 1 User
+- classname	:	target_pow_house
+- spawnflags:	the id corresponding to the id in the file
+
+==============================================================================
+*/
+void Use_Pow_House(gentity_t* self, gentity_t* other, gentity_t* activator) {
+	int i;
+	houseList_t house;
+	if (!activator || !activator->client) {
+		return;
+	}
+
+	for (i = 0; i < ARRAY_LEN(level.houseList); i++) {
+		house = level.houseList[i];
+		if (house.id == self->spawnflags) {
+			if (house.ownerId != 0 && house.ownerId == activator->client->sess.id) {
+				G_UseTargets(self, activator);
+				return;
+			}
+			else {
+				trap_SendServerCommand(activator - g_entities, va("cp \"^7%s\n^1Locked\"", house.name));
+			}
+			break;
+		}
+	}
+
+}
+
+void SP_Pow_House(gentity_t* ent) {
+	ent->use = Use_Pow_House;
+	trap_LinkEntity(ent);
+}
+
 /*QUAKED func_group (0 0 0) ?
 Used to group brushes together just for editor convenience.  They are turned into normal brushes by the utilities.
 */
@@ -3343,49 +3380,3 @@ void G_CreateExampleAnimEnt(gentity_t *ent)
 	G_SpawnExampleAnimEnt(fwdPos, iArg, &aeInfo);
 }
 //rww - here ends the main example g2animent stuff
-
-/*
-=================
-RP: Resource
-by PowTecH
-=================
-*/
-//PowTecH - RP: resource spawn
-void SP_Pow_Resource(gentity_t* ent) {
-	int mins[3] = { -2, -2, -2 };
-	int maxs[3] = { 2, 2, 2 };
-
-	vec3_t dest;
-	trace_t tr;
-
-	ent->s.modelindex = G_ModelIndex(ent->model);
-
-	VectorSet(ent->r.mins, mins[0], mins[1], mins[2]);
-	VectorSet(ent->r.maxs, maxs[0], maxs[1], maxs[2]);
-
-	VectorSet(dest, 704, 152, ent->s.origin[2] - 4096);
-	G_Printf("^0Has been hit %.2f %.2f %.2f\n", ent->s.origin[0], ent->s.origin[1], ent->s.origin[2]);
-	G_Printf("^0Has been hit %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
-	trap_Trace(&tr, ent->s.origin, ent->r.mins, ent->r.maxs, dest, ent->s.number, MASK_SOLID);
-	if (tr.startsolid)
-	{
-		G_Printf("SP_misc_shield_floor_unit: misc_shield_floor_unit startsolid at %s\n", vtos(ent->s.origin));
-		G_FreeEntity(ent);
-		return;
-	}
-
-	ent->s.eFlags = 0;
-	ent->r.svFlags |= SVF_PLAYER_USABLE;
-	ent->r.contents = CONTENTS_SOLID;
-	ent->clipmask = MASK_SOLID;
-
-	G_SetOrigin(ent, ent->s.origin);
-	G_SetAngles(ent, ent->s.angles);
-
-	ent->nextthink = level.time + FRAMETIME;
-	ent->think = Trigger_Pow_Resource;
-
-	trap_LinkEntity(ent);
-}
-//
-

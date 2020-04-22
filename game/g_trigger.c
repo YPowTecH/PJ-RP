@@ -588,6 +588,19 @@ void SP_func_timer( gentity_t *self ) {
 	self->r.svFlags = SVF_NOCLIENT;
 }
 
+/*
+==============================================================================
+
+PowTecH: RP - Item Spawning in an area
+- classname	:	trigger_pow_resource_spawn_area
+- count		:	Money player gets for picking it up
+- random	:	Deviation in the money -+
+- wait		:	How long before the item respawns
+- roffname	:	md3 file path and name for the item
+
+==============================================================================
+*/
+
 float findNewRandomNumberBetweenTwo(float min, float max) {
 	//RNG garbage...
 	int rng = 0;
@@ -634,7 +647,7 @@ trace_t setupTheResource(gentity_t* ent, float x, float y, float z) {
 	return tr;
 }
 
-void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
+void Pow_Resource(gentity_t* self, gentity_t* activator) {
 	if (!activator->client)
 	{
 		return;
@@ -658,15 +671,15 @@ void Pow_Resource_t(gentity_t* self, gentity_t* activator) {
 	G_FreeEntity(self);
 }
 
-void Use_Pow_Resource_t(gentity_t* self, gentity_t* other, gentity_t* activator) {
-	Pow_Resource_t(self, activator);
+void Use_Pow_Resource(gentity_t* self, gentity_t* other, gentity_t* activator) {
+	Pow_Resource(self, activator);
 }
 
-void Touch_Pow_Resource_t(gentity_t* self, gentity_t* other, trace_t* trace) {
+void Touch_Pow_Resource(gentity_t* self, gentity_t* other, trace_t* trace) {
 	if (!other->client) {
 		return;
 	}
-	Pow_Resource_t(self, other);
+	Pow_Resource(self, other);
 }
 
 void Item_Pow_Resource_In_Area_Trigger(gentity_t* ent) {
@@ -691,8 +704,8 @@ void Item_Pow_Resource_In_Area_Trigger(gentity_t* ent) {
 	VectorCopy(maxs, newEnt->r.maxs);
 	newEnt->parent = ent;
 	newEnt->r.contents = CONTENTS_TRIGGER;
-	newEnt->touch = Touch_Pow_Resource_t;
-	newEnt->use = Use_Pow_Resource_t;
+	newEnt->touch = Touch_Pow_Resource;
+	newEnt->use = Use_Pow_Resource;
 
 	trap_LinkEntity(newEnt);
 }
