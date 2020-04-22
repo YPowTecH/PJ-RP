@@ -2937,7 +2937,7 @@ void Cmd_House_Buy_f(gentity_t* ent) {
 				help_writeHouse_f(ent, userfile);
 			}
 
-			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' purchased for ^1-^3%i^2]^7\n\"", h.name, h.buy));
+			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' purchased for ^7'^1-%i^7'^2]^7\n\"", h.name, h.buy));
 			return;
 		}
 	}
@@ -2991,7 +2991,7 @@ void Cmd_House_Sell_f(gentity_t* ent) {
 				help_writeHouse_f(ent, userfile);
 			}
 
-			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' sold for ^7'^2+$%i^7'^2]^7\n\"", h.name, h.sell));
+			trap_SendServerCommand(ent - g_entities, va("print \"^2[^7'%s^7' sold for ^7'^2+%i^7'^2]^7\n\"", h.name, h.sell));
 			return;
 		}
 	}
