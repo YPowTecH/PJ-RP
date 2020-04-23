@@ -24,7 +24,7 @@ PowTecH: RP - House Door Unlocked to 1 User
 */
 void Use_Pow_House(gentity_t* self, gentity_t* other, gentity_t* activator) {
 	int i;
-	houseList_t house;
+	houseList_s house;
 	if (!activator || !activator->client) {
 		return;
 	}

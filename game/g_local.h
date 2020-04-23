@@ -454,14 +454,34 @@ struct gclient_s {
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
-//By PowTecH - RP: house object 
+//PowTecH - RP: house object
 typedef struct {
 	int		id;
 	char	name[MAX_NETNAME];
 	int		buy;
 	int		sell;
 	int		ownerId;
-} houseList_t;
+} houseList_s;
+
+#define MERCQUEUE_DUEL 1
+#define MERCQUEUE_ARENA 2
+
+//PowTecH - Merc: Arena struct to keep track of all the arenas on the map on map load
+typedef struct {
+	int type;//MERCQUEUE_*
+	int arenaId;//the arenas id
+	int numOfSpawns;//how many different spawns the areana has
+	int lives;//how many deaths they get in the area before they are tp'd out
+	qboolean isEmpty;//easy way to loop through all the arenas and find an empty one
+	gentity_t players[8];//players in the arena - for respawning
+} mercArena_s;
+
+//PowTecH - Merc: Queue struct to track who wants to fight
+typedef struct {
+	gentity_t *player;
+	int type;
+
+} mercInQueue_s;
 
 typedef struct {
 	struct gclient_s	*clients;		// [maxclients]
@@ -553,7 +573,11 @@ typedef struct {
 	int			dbUserCount;
 
 	//PowTecH - RP: Keep track of all the houses
-	houseList_t	houseList[MAX_TOKEN_CHARS];
+	houseList_s houseList[MAX_TOKEN_CHARS];
+
+	//PowTecH - Merc: Queue Keep track of players in queue
+	mercInQueue_s mercQueueList[MAX_TOKEN_CHARS];
+	int mercQueueCount;
 
 } level_locals_t;
 

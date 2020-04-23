@@ -2859,7 +2859,7 @@ By PowTecH
 */
 void Cmd_House_List_f(gentity_t* ent) {
 	int i;
-	houseList_t h;
+	houseList_s h;
 
 	for (i = 0; i < ARRAY_LEN(level.houseList); i++) {
 		if (!level.houseList[i].id) {
@@ -2887,7 +2887,7 @@ By PowTecH
 */
 void Cmd_House_Buy_f(gentity_t* ent) {
 	int i;
-	houseList_t h;
+	houseList_s h;
 	char houseID[7] = "";
 
 	char userfile[MAX_TOKEN_CHARS];
@@ -2952,7 +2952,7 @@ By PowTecH
 */
 void Cmd_House_Sell_f(gentity_t* ent) {
 	int i;
-	houseList_t h;
+	houseList_s h;
 	char houseID[7] = "";
 
 	char userfile[MAX_TOKEN_CHARS];
@@ -2996,6 +2996,124 @@ void Cmd_House_Sell_f(gentity_t* ent) {
 		}
 	}
 	trap_SendServerCommand(ent - g_entities, va("print \"^1[^7Couldn't find house number '^1%s^7'^1]^7\n\"", houseID));
+}
+
+/*
+=================
+Merc: Queue list players
+By PowTecH
+=================
+*/
+void Cmd_Merc_List_f(gentity_t* ent) {
+	int i;
+	mercInQueue_s q;
+
+	if (level.mercQueueCount <= 0) {
+		trap_SendServerCommand(ent - g_entities, Pow_Output("No one in queue", 1));
+		return;
+	}
+
+	for (i = 0; i < ARRAY_LEN(level.mercQueueList); i++) {
+		//empty cell
+		if (!level.mercQueueList[i].player) {
+			break;
+		}
+		q = level.mercQueueList[i];
+
+		if (q.player->client->sess.id == ent->client->sess.id) {
+			trap_SendServerCommand(ent - g_entities, va("print \"^5[^2* ^7%s^5]^7\n\"", q.player->client->pers.netname));
+		}
+		else {
+			trap_SendServerCommand(ent - g_entities, va("print \"^5[^7* ^7%s^5]^7\n\"", q.player->client->pers.netname));
+		}
+	}
+}
+
+/*
+=================
+Merc: Queue join
+By PowTecH
+=================
+*/
+void Cmd_Merc_Join_f(gentity_t * ent) {
+	int i;
+	int emptyI = -1;
+	qboolean found = qfalse;
+	mercInQueue_s q;
+
+	for (i = 0; i < ARRAY_LEN(level.mercQueueList); i++) {
+		//empty cell
+		if (!level.mercQueueList[i].player) {
+			//remember where the empty slot is so we can fill it
+			if (emptyI == -1) {
+				emptyI = i;
+			}
+			break;
+		}
+		q = level.mercQueueList[i];
+
+		//found the player so no need to keep looking
+		if (q.player->client->sess.id == ent->client->sess.id) {
+			found = qtrue;
+			break;
+		}
+	}
+
+	//found the player so dont add them to the queue again
+	if (found) {
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Already in queue", 1));
+	}
+	//add the player to the queue
+	else {
+		level.mercQueueCount += 1;
+		level.mercQueueList[emptyI].player = ent;
+		trap_SendServerCommand(ent - g_entities, Pow_Output("In queue", 2));
+	}
+}
+
+/*
+=================
+Merc: Queue leave
+By PowTecH
+=================
+*/
+void Cmd_Merc_Leave_f(gentity_t * ent) {
+	int i;
+	int theI = -1;
+	qboolean found = qfalse;
+	mercInQueue_s q;
+
+	if (level.mercQueueCount <= 0) {
+		trap_SendServerCommand(ent - g_entities, Pow_Output("No one in queue", 1));
+		return;
+	}
+
+	for (i = 0; i < ARRAY_LEN(level.mercQueueList); i++) {
+		//empty cell
+		if (!level.mercQueueList[i].player) {
+			break;
+		}
+		q = level.mercQueueList[i];
+
+		//found the player so no need to keep looking
+		if (q.player->client->sess.id == ent->client->sess.id) {
+			theI = i;
+			found = qtrue;
+			break;
+		}
+	}
+
+	//remove the found player from the queue
+	if (found) {
+		//this is probably a bad way but im tired and cant think of the acutal way to clear the cell
+		level.mercQueueCount -= 1;
+		level.mercQueueList[theI] = level.mercQueueList[65];
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Removed from queue", 2));
+	}
+	//couldn't find the user so we cant remove them
+	else {
+		trap_SendServerCommand(ent - g_entities, Pow_Output("Not in queue", 1));
+	}
 }
 
 /*
@@ -3060,9 +3178,13 @@ static const clientCommand_t commands[] = {
 	{ "amlogout", Cmd_Logout_f, CMD_NOINTERMISSION },
 	{ "ammoney", Cmd_Money_Read_f, CMD_NOINTERMISSION },
 	//PowTecH - RP: House commands
-	{ "pjhouselist", Cmd_House_List_f, CMD_NOINTERMISSION },
+	{ "pjhouse", Cmd_House_List_f, CMD_NOINTERMISSION },
 	{ "pjhousebuy", Cmd_House_Buy_f, CMD_NOINTERMISSION },
-	{ "pjhousesell", Cmd_House_Sell_f, CMD_NOINTERMISSION }
+	{ "pjhousesell", Cmd_House_Sell_f, CMD_NOINTERMISSION },
+	//PowTecH - Merc: Queue
+	{ "pjmerc", Cmd_Merc_List_f, CMD_NOINTERMISSION },
+	{ "pjmercjoin", Cmd_Merc_Join_f, CMD_NOINTERMISSION },
+	{ "pjmercleave", Cmd_Merc_Leave_f, CMD_NOINTERMISSION }
 };
 //PowTecH - End
 
