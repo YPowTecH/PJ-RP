@@ -3020,7 +3020,7 @@ void Cmd_Merc_List_f(gentity_t* ent) {
 		}
 		q = level.mercQueueList[i];
 
-		if (q.player->client->sess.id == ent->client->sess.id) {
+		if (q.player == ent) {
 			trap_SendServerCommand(ent - g_entities, va("print \"^5[^2* ^7%s^5]^7\n\"", q.player->client->pers.netname));
 		}
 		else {
@@ -3053,7 +3053,7 @@ void Cmd_Merc_Join_f(gentity_t * ent) {
 		q = level.mercQueueList[i];
 
 		//found the player so no need to keep looking
-		if (q.player->client->sess.id == ent->client->sess.id) {
+		if (q.player == ent) {
 			found = qtrue;
 			break;
 		}
@@ -3096,13 +3096,13 @@ void Cmd_Merc_Leave_f(gentity_t * ent) {
 		q = level.mercQueueList[i];
 
 		//found the player so no need to keep looking
-		if (q.player->client->sess.id == ent->client->sess.id) {
+		if (q.player == ent) {
 			theI = i;
 			found = qtrue;
 			break;
 		}
 	}
-
+	
 	//remove the found player from the queue
 	if (found) {
 		//this is probably a bad way but im tired and cant think of the acutal way to clear the cell
